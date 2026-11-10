@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#a4531f">
+<title>Bread Route — delivery & payment tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#fbf3e4;--card:#fffaf1;--ink:#3a2412;--mut:#8b7358;--crust:#a4531f;--crust2:#7d3b14;--gold:#e8a83a;--ok:#2f7d4f;--okbg:#e1f1e5;--warn:#9a5a05;--warnbg:#fdeccb;--bad:#b3352a;--badbg:#fbdcd6;--line:#ecdcbe;--r:18px}
+html{background:var(--bg)}
+body{margin:0;color:var(--ink);font:16px/1.4 'DM Sans',system-ui,sans-serif;padding-bottom:96px;min-height:100vh;
+background:radial-gradient(1200px 380px at 50% -120px,#f6dfae 0,transparent 70%),var(--bg)}
+h1,h2,h3,.serif{font-family:'Fraunces',Georgia,serif;margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:860px;margin:0 auto;padding:14px}
+.top{position:sticky;top:0;z-index:20;background:rgba(251,243,228,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:10px;padding-top:10px;padding-bottom:10px}
+.logo{font-family:'Fraunces',serif;font-weight:800;font-size:20px;color:var(--crust2);display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.logo span.n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.me{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px}
+.av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;flex:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin:12px 0;box-shadow:0 1px 0 #fff inset,0 6px 18px -12px rgba(120,60,10,.35);position:relative}
+.card h3{font-size:17px;margin-bottom:8px}
+.row{display:flex;align-items:center;gap:10px}
+.sp{flex:1;min-width:0}
+.mut{color:var(--mut)}
+.small{font-size:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.kpi b{display:block;font-family:'Fraunces',serif;font-size:26px;line-height:1.1;margin-top:2px}
+.kpi.bad b{color:var(--bad)}.kpi.ok b{color:var(--ok)}
+.chip{display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:2px 10px;font-size:12.5px;font-weight:700;white-space:nowrap}
+.chip.ok{background:var(--okbg);color:var(--ok)}.chip.warn{background:var(--warnbg);color:var(--warn)}.chip.bad{background:var(--badbg);color:var(--bad)}
+.btn{border:0;border-radius:12px;padding:10px 16px;font-weight:700;cursor:pointer;background:var(--crust);color:#fff;min-height:42px}
+.btn:active{transform:scale(.97)}
+.btn.ghost{background:transparent;color:var(--crust2);border:1.5px solid var(--line)}
+.btn.ok{background:var(--ok)}.btn.bad{background:var(--bad)}.btn.sm{padding:6px 12px;min-height:34px;font-size:14px;border-radius:10px}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.btn.full{width:100%}
+input,select,textarea{width:100%;border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:10px 12px;min-height:44px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(232,168,58,.25)}
+label.f{display:block;font-size:13px;font-weight:700;color:var(--mut);margin:12px 0 4px}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+.nav button{flex:1;background:none;border:0;padding:9px 4px 8px;color:var(--mut);font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.nav button i{font-style:normal;font-size:21px;filter:grayscale(.7)}
+.nav button.on{color:var(--crust2)}.nav button.on i{filter:none}
+.fab{position:fixed;right:16px;bottom:84px;z-index:25;border-radius:99px;padding:0 20px;height:52px;box-shadow:0 8px 22px -6px rgba(125,59,20,.6);font-size:16px}
+.seg{display:flex;background:#f3e6c9;border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:none;border-radius:10px;padding:7px 8px;font-weight:700;color:var(--mut);cursor:pointer;font-size:14px}
+.seg button.on{background:#fff;color:var(--crust2);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.list>.it{display:flex;gap:10px;align-items:center;padding:11px 0;border-top:1px solid var(--line);cursor:pointer}
+.list>.it:first-child{border-top:0}
+.day{font-family:'Fraunces',serif;font-weight:800;margin:18px 2px 6px;display:flex;justify-content:space-between;color:var(--crust2)}
+.dl{cursor:pointer;overflow:hidden}
+.stamp{position:absolute;right:12px;top:12px;border:2px solid var(--ok);color:var(--ok);border-radius:6px;padding:0 7px;font-weight:800;letter-spacing:.12em;font-size:12px;transform:rotate(-7deg);opacity:.9}
+.bars{display:flex;gap:8px;align-items:flex-end;height:110px;margin-top:6px}
+.bars div.b{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font-size:12px;color:var(--mut)}
+.bars i{display:block;width:100%;max-width:38px;border-radius:8px 8px 3px 3px;background:linear-gradient(#e8a83a,#c9812a);min-height:3px}
+.bars .t i{background:linear-gradient(#c8612a,#8c3d12)}
+.bars em{font-style:normal;font-weight:700;color:var(--ink);font-size:12px}
+.ringwrap{display:flex;align-items:center;gap:14px}
+.sheet{position:fixed;inset:0;z-index:50;background:rgba(40,20,5,.5);display:none;align-items:flex-end;justify-content:center}
+.sheet.open{display:flex}
+.panel{background:var(--bg);width:100%;max-width:640px;max-height:93vh;overflow:auto;border-radius:24px 24px 0 0;padding:18px 16px 28px;animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.panel h2{font-size:22px;margin-bottom:4px}
+.x{float:right;background:#f3e6c9;border:0;border-radius:50%;width:34px;height:34px;font-size:18px;cursor:pointer}
+.prow{border:1.5px solid var(--line);border-radius:14px;padding:10px;margin:8px 0;background:#fff}
+.prow.on{border-color:var(--gold);background:#fffaf0}
+.stepper{display:flex;gap:6px;align-items:center;margin-top:6px}
+.stepper button{border:0;background:#f3e6c9;border-radius:10px;min-width:40px;height:42px;font-weight:800;cursor:pointer;color:var(--crust2)}
+.stepper input.q{text-align:center;font-weight:800;font-size:18px;max-width:80px}
+.stepper .pp{margin-left:auto;display:flex;align-items:center;gap:4px;font-size:13px;color:var(--mut)}
+.stepper .pp input{width:78px;min-height:42px}
+.totalbar{position:sticky;bottom:-28px;background:var(--bg);padding:10px 0 2px;margin-top:6px}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#3a2412;color:#fff;padding:10px 16px;border-radius:12px;z-index:90;display:none;max-width:92vw;box-shadow:0 10px 30px rgba(0,0,0,.3);align-items:center;gap:12px}
+.toast.on{display:flex}.toast button{background:none;border:0;color:var(--gold);font-weight:800;cursor:pointer}
+.center{min-height:100vh;display:grid;place-items:center;padding:18px}
+.auth{width:100%;max-width:400px;text-align:center}
+.auth .hero{font-size:64px;animation:fl 3s ease-in-out infinite}
+@keyframes fl{50%{transform:translateY(-8px) rotate(-4deg)}}
+.auth h1{font-size:32px;color:var(--crust2)}
+.auth .card{text-align:left}
+.err{color:var(--bad);font-weight:700;font-size:14px;min-height:20px;margin-top:8px}
+.shake{animation:sh .35s}
+@keyframes sh{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.lang{background:none;border:1.5px solid var(--line);border-radius:10px;padding:4px 9px;font-weight:700;cursor:pointer;color:var(--mut)}
+.banner{background:var(--warnbg);color:var(--warn);border-radius:12px;padding:8px 12px;font-weight:700;font-size:14px;margin-top:10px}
+table.t{width:100%;border-collapse:collapse}table.t td{padding:5px 0;border-top:1px solid var(--line)}table.t td:last-child{text-align:right;font-weight:700}
+.empty{text-align:center;padding:26px 10px;color:var(--mut)}
+.empty b{display:block;font-size:40px}
+textarea.copy{min-height:170px}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="sheet" class="sheet" onclick="if(event.target===this)closeSheet()"><div class="panel" id="panel"></div></div>
+<div id="toast" class="toast"></div>
+<script>
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}}
+let lang=ls('bk_lang')||((navigator.language||'').startsWith('mk')?'mk':'en');
+const L=(en,mk)=>lang==='mk'?mk:en;
+const money=n=>Math.round(n||0).toLocaleString('en-US')+(lang==='mk'?' ден.':' MKD');
+const ymd=d=>{const z=new Date(d.getTime()-d.getTimezoneOffset()*6e4);return z.toISOString().slice(0,10)};
+const today=()=>ymd(new Date());
+const pd=s=>new Date(s+'T12:00:00');
+const loc=()=>lang==='mk'?'mk-MK':'en-GB';
+const fmtD=s=>pd(s).toLocaleDateString(loc(),{weekday:'short',day:'numeric',month:'short'});
+const fmtT=iso=>{const d=new Date(iso);return ymd(d)===today()?d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString(loc(),{day:'numeric',month:'short'})};
+const daysBetween=(a,b)=>Math.round((pd(b)-pd(a))/864e5);
+const uid=()=>Math.random().toString(36).slice(2,10);
+
+const S={boot:true,needsSetup:false,me:null,staff:[],clients:[],products:[],deliveries:[],settings:{},version:'',view:'home',
+  f:{range:'week',status:'all',client:''},q:'',screen:'',err:'',offline:false};
+let D={byC:{}};
+
+/* ---------- api ---------- */
+async function api(path,method='GET',body){
+  const r=await fetch('/api/'+path,{method,headers:{'content-type':'application/json'},credentials:'same-origin',body:body?JSON.stringify(body):undefined});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw Object.assign(new Error(j.error||('HTTP '+r.status)),{status:r.status,code:j.error,msg:j.message});
+  return j;
+}
+const ERR={invalid_credentials:['Wrong username or password','Погрешно корисничко име или лозинка'],locked:['Too many attempts — wait 10 minutes','Премногу обиди — почекај 10 минути'],
+weak_password:['Password needs at least 6 characters','Лозинката мора да има најмалку 6 знаци'],bad_username:['Username: 3–30 letters/numbers (a-z, 0-9, . _ -)','Корисничко име: 3–30 букви/бројки (a-z, 0-9, . _ -)'],
+username_taken:['That username is taken','Тоа корисничко име е зафатено'],not_yours:['Only the person who added it (or the owner) can delete this','Само тој што го внел (или сопственикот) може да го избрише'],
+admin_only:['Only the owner can do this','Само сопственикот може ова'],has_deliveries:['This business has deliveries, so it can’t be deleted','Фирмата има достави и не може да се избрише'],
+last_admin:['There must be at least one owner','Мора да има барем еден сопственик'],wrong_current:['Current password is wrong','Тековната лозинка е погрешна'],
+cannot_remove_self:['You can’t remove yourself','Не можеш да се избришеш себеси'],no_items:['Add at least one bread','Додади барем еден леб']};
+const errText=e=>{const m=ERR[e.code];return m?L(m[0],m[1]):(e.msg||e.message||'Error')};
+
+async function sync(force){
+  try{
+    const j=await api('sync'+(!force&&S.version?'?v='+encodeURIComponent(S.version):''));
+    S.offline=false;
+    if(j.same)return;
+    Object.assign(S,{version:j.version,me:j.me,staff:j.staff,clients:j.clients,products:j.products,deliveries:j.deliveries,settings:j.settings||{}});
+    render();
+  }catch(e){
+    if(e.status===401){S.me=null;S.screen='';S.version='';render();}
+    else if(!S.offline){S.offline=true;toast(L('No connection — will retry','Нема врска — повторно ќе пробам'))}
+  }
+}
+async function w(fn){try{await fn();await sync(true);return true}catch(e){toast(errText(e));return false}}
+async function boot(){
+  try{
+    const j=await api('session');
+    S.needsSetup=j.needsSetup;S.bakery=j.bakery;
+    if(j.me){S.me=j.me;await sync(true)}
+  }catch(e){S.err=e.msg||e.message||'Error'}
+  S.boot=false;render();
+  setInterval(()=>{if(S.me&&!document.hidden)sync()},8000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.me)sync()});
+}
+
+/* ---------- derived data ---------- */
+const paidOf=d=>(d.pays||[]).reduce((a,p)=>a+p.a,0);
+const dueOf=d=>Math.max(0,d.total-paidOf(d));
+const loavesOf=d=>(d.items||[]).reduce((a,i)=>a+i.q,0);
+const clientName=id=>(S.clients.find(c=>c.id===id)||{name:'—'}).name;
+const isAdmin=()=>S.me&&S.me.role==='admin';
+function derive(){
+  const m={};for(const c of S.clients)m[c.id]={due:0,oldest:null,loaves:0,paid:0,total:0,last:null,n:0};
+  for(const d of S.deliveries){const c=m[d.cid]||(m[d.cid]={due:0,oldest:null,loaves:0,paid:0,total:0,last:null,n:0});
+    const due=dueOf(d);c.n++;c.loaves+=loavesOf(d);c.total+=d.total;c.paid+=paidOf(d);
+    if(due>0){c.due+=due;if(!c.oldest||d.date<c.oldest)c.oldest=d.date}
+    if(!c.last||d.date>c.last.date||(d.date===c.last.date&&d.at>c.last.at))c.last=d}
+  D.byC=m;S.deliveries.sort((a,b)=>b.date.localeCompare(a.date)||b.at.localeCompare(a.at));
+}
+const chip=(c,t)=>`<span class="chip ${c}">${t}</span>`;
+const statusChip=d=>{const due=dueOf(d);return due<=0?chip('ok','✓ '+L('Paid','Платено')):paidOf(d)>0?chip('warn',L('Partial','Делумно')+' · '+money(due)):chip('bad',L('Unpaid','Неплатено'))};
+const ageChip=c=>{if(!c||c.due<=0)return chip('ok','✓ '+L('All paid','Платено'));const n=daysBetween(c.oldest,today());
+  return n>7?chip('bad',L('Overdue '+n+'d','Задоцнето '+n+'д')):chip('warn',L('Owes','Должи'))};
+const itemsText=d=>(d.items||[]).map(i=>`${esc(i.e)}×${i.q}`).join('  ');
+const avatar=(u,sz)=>`<span class="av" style="background:${esc(u.color||'#a4531f')};${sz?`width:${sz}px;height:${sz}px`:''}">${esc((u.name||'?').trim()[0]||'?').toUpperCase()}</span>`;
+
+/* ---------- toast / sheet ---------- */
+let tt;
+function toast(msg,undo){const t=$('#toast');t.innerHTML=`<span>${esc(msg)}</span>`+(undo?`<button id="undo">${L('Undo','Врати')}</button>`:'');t.classList.add('on');
+  if(undo)$('#undo').onclick=()=>{t.classList.remove('on');undo()};clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),undo?6000:3200)}
+function openSheet(html){$('#panel').innerHTML=`<button class="x" data-act="close">✕</button>`+html;$('#sheet').classList.add('open');$('#panel').scrollTop=0}
+function closeSheet(){$('#sheet').classList.remove('open')}
+function armed(el,fn,label){if(el.dataset.armed){clearTimeout(+el.dataset.armed);fn();return}
+  const old=el.innerHTML;el.innerHTML=label||L('Tap again to confirm','Допри повторно за потврда');
+  el.dataset.armed=setTimeout(()=>{el.innerHTML=old;delete el.dataset.armed},3000)}
+
+/* ---------- render ---------- */
+function render(){
+  const app=$('#app');derive();
+  if(S.boot){app.innerHTML=`<div class="center"><div class="auth"><div class="hero">🥖</div><p class="mut">${L('Warming up the oven…','Ја загреваме печката…')}</p></div></div>`;return}
+  if(S.err){app.innerHTML=`<div class="center"><div class="auth card"><h3>⚠️ ${L('Can’t reach the server','Не може да се поврзе')}</h3><p class="mut small">${esc(S.err)}</p><button class="btn full" onclick="location.reload()">${L('Try again','Обиди се повторно')}</button></div></div>`;return}
+  if(S.needsSetup){if(S.screen!=='setup'){S.screen='setup';app.innerHTML=setupHTML()}return}
+  if(!S.me){if(S.screen!=='login'){S.screen='login';app.innerHTML=loginHTML()}return}
+  S.screen='app';
+  const nav=[['home','🏠',L('Today','Денес')],['dels','🧾',L('Deliveries','Достави')],['biz','🏪',L('Businesses','Фирми')],['set','⚙️',L('Team','Тим')]];
+  const views={home,dels:deliveriesView,biz:clientsView,set:settingsView};
+  app.innerHTML=`<div class="top"><div class="wrap"><div class="logo"><span>🥖</span><span class="n">${esc(S.settings.bakery||'Bread Route')}</span></div>
+  <div class="me">${avatar(S.me)}<span>${esc(S.me.name)}</span></div></div></div>
+  <div class="wrap">${S.offline?`<div class="banner">${L('Offline — showing last data','Без врска — последни податоци')}</div>`:''}${views[S.view]()}</div>
+  <button class="btn fab" data-act="newdel">＋ ${L('Delivery','Достава')}</button>
+  <div class="nav">${nav.map(n=>`<button class="${S.view===n[0]?'on':''}" data-act="nav" data-v="${n[0]}"><i>${n[1]}</i>${n[2]}</button>`).join('')}</div>`;
+}
+
+/* ---------- auth screens ---------- */
+function setupHTML(){return `<div class="center"><div class="auth"><div class="hero">🥖</div><h1>${L('Welcome, baker!','Добредојде, пекару!')}</h1>
+<p class="mut">${L('Create the owner account. You can add the other team members afterwards.','Направи сметка на сопственикот. Другите членови ги додаваш потоа.')}</p>
+<div class="card"><label class="f">${L('Bakery name','Име на пекарата')}</label><input id="s-bak" placeholder="Fresh Bread">
+<label class="f">${L('Your name','Твое име')}</label><input id="s-name" autocomplete="name">
+<label class="f">${L('Username','Корисничко име')}</label><input id="s-user" autocapitalize="none" autocomplete="username">
+<label class="f">${L('Password (min 6)','Лозинка (мин. 6)')}</label><input id="s-pass" type="password" autocomplete="new-password">
+<div class="err" id="s-err"></div><button class="btn full" data-act="setup">${L('Create & start','Создај и започни')}</button></div></div></div>`}
+function loginHTML(){return `<div class="center"><div class="auth"><div class="hero">🥖</div><h1>${esc(S.bakery||S.settings.bakery||'Bread Route')}</h1>
+<p class="mut">${L('Sign in to see deliveries & payments','Најави се за достави и плаќања')}</p>
+<form class="card" onsubmit="event.preventDefault();doLogin()"><label class="f">${L('Username','Корисничко име')}</label><input id="l-user" value="${esc(ls('bk_user')||'')}" autocapitalize="none" autocomplete="username">
+<label class="f">${L('Password','Лозинка')}</label><input id="l-pass" type="password" autocomplete="current-password">
+<div class="err" id="l-err"></div><button class="btn full" type="submit">${L('Sign in','Најави се')}</button></form>
+<button class="lang" onclick="setLang()">${lang==='en'?'🇲🇰 Македонски':'🇬🇧 English'}</button></div></div>`}
+async function doLogin(){
+  const u=$('#l-user').value.trim(),p=$('#l-pass').value;
+  try{await api('session','POST',{username:u,password:p});ls('bk_user',u.toLowerCase());S.screen='';S.version='';const j=await api('session');S.me=j.me;await sync(true);S.view='home';render()}
+  catch(e){$('#l-err').textContent=errText(e);const c=$('.auth .card');c.classList.remove('shake');void c.offsetWidth;c.classList.add('shake')}
+}
+function setLang(){lang=lang==='en'?'mk':'en';ls('bk_lang',lang);S.screen='';render()}
+acts={};
+acts.setup=async()=>{
+  const products=lang==='mk'?[{n:'Бел леб',e:'🍞',price:35},{n:'Црн леб',e:'🍞',price:45},{n:'Багета',e:'🥖',price:30},{n:'Кифли',e:'🥐',price:20}]
+  :[{n:'White loaf',e:'🍞',price:35},{n:'Whole-wheat loaf',e:'🍞',price:45},{n:'Baguette',e:'🥖',price:30},{n:'Croissant',e:'🥐',price:20}];
+  try{await api('setup','POST',{bakery:$('#s-bak').value,name:$('#s-name').value,username:$('#s-user').value,password:$('#s-pass').value,products});
+    ls('bk_user',$('#s-user').value.trim().toLowerCase());S.needsSetup=false;S.screen='';await sync(true);toast(L('All set! Prices are editable in Team ▸ Products','Готово! Цените се менуваат во Тим ▸ Производи'))}
+  catch(e){$('#s-err').textContent=errText(e)}
+};
+acts.logout=async()=>{try{await api('session','DELETE')}catch(e){}S.me=null;S.version='';S.screen='';render()};
+
+/* ---------- HOME ---------- */
+function home(){
+  const td=today(),h=new Date().getHours();
+  const hello=h<12?L('Good morning','Добро утро'):h<18?L('Good afternoon','Добар ден'):L('Good evening','Добра вечер');
+  const todayD=S.deliveries.filter(d=>d.date===td);
+  const tl=todayD.reduce((a,d)=>a+loavesOf(d),0);
+  const byC=Object.entries(D.byC);
+  const owed=byC.reduce((a,[,c])=>a+c.due,0),owing=byC.filter(([,c])=>c.due>0).length;
+  const wk0=ymd(new Date(Date.now()-6*864e5));let coll=0;
+  for(const d of S.deliveries)for(const p of d.pays||[])if(ymd(new Date(p.t))>=wk0)coll+=p.a;
+  const ms=td.slice(0,7),md=S.deliveries.filter(d=>d.date.startsWith(ms));
+  const mt=md.reduce((a,d)=>a+d.total,0),mp=md.reduce((a,d)=>a+paidOf(d),0),pct=mt?Math.round(mp/mt*100):0;
+  const C=2*Math.PI*34;
+  const days=[...Array(7)].map((_,i)=>{const dt=ymd(new Date(Date.now()-(6-i)*864e5));return{dt,n:S.deliveries.filter(d=>d.date===dt).reduce((a,d)=>a+loavesOf(d),0)}});
+  const mx=Math.max(1,...days.map(d=>d.n));
+  const notYet=S.clients.filter(c=>!todayD.some(d=>d.cid===c.id)).sort((a,b)=>(D.byC[b.id].last?1:0)-(D.byC[a.id].last?1:0)||a.name.localeCompare(b.name));
+  const top=S.clients.filter(c=>D.byC[c.id].due>0).sort((a,b)=>D.byC[b.id].due-D.byC[a.id].due).slice(0,5);
+  const ev=[];for(const d of S.deliveries){ev.push({t:d.at,x:`<b>${esc(d.bn)}</b> ${L('delivered','достави')} ${loavesOf(d)} 🍞 ${L('to','на')} <b>${esc(clientName(d.cid))}</b>`});
+    for(const p of d.pays||[])ev.push({t:p.t,x:`<b>${esc(p.bn)}</b> ${L('collected','наплати')} ${money(p.a)} ${L('from','од')} <b>${esc(clientName(d.cid))}</b> 💰`})}
+  ev.sort((a,b)=>b.t.localeCompare(a.t));
+  if(!S.clients.length)return `<div class="card empty"><b>🏪</b><h3>${hello}, ${esc(S.me.name)}!</h3><p>${L('Start by adding the businesses you deliver bread to.','Започни со додавање на фирмите на кои им доставуваш леб.')}</p><button class="btn" data-act="newclient">＋ ${L('Add first business','Додади прва фирма')}</button></div>`;
+  return `<div class="card" style="background:linear-gradient(135deg,#fff3d6,#fffaf1)"><div class="ringwrap">
+  <svg width="86" height="86" viewBox="0 0 86 86"><circle cx="43" cy="43" r="34" fill="none" stroke="#f0dfbd" stroke-width="10"/><circle cx="43" cy="43" r="34" fill="none" stroke="${pct>=80?'#2f7d4f':pct>=50?'#e8a83a':'#b3352a'}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C*pct/100} ${C}" transform="rotate(-90 43 43)"/><text x="43" y="49" text-anchor="middle" font-family="Fraunces,serif" font-weight="800" font-size="20" fill="#3a2412">${pct}%</text></svg>
+  <div class="sp"><h2 style="font-size:21px">${hello}, ${esc(S.me.name)} ${h<12?'☀️':h<18?'🌤':'🌙'}</h2><div class="mut small">${new Date().toLocaleDateString(loc(),{weekday:'long',day:'numeric',month:'long'})}</div>
+  <div class="small" style="margin-top:4px">${L('This month you’ve been paid for','Овој месец е наплатено')} <b>${pct}%</b> ${L('of your deliveries','од доставите')}</div></div></div></div>
+  <div class="grid2"><div class="kpi"><span class="mut small">${L('Delivered today','Доставено денес')}</span><b>${tl} 🍞</b><span class="small mut">${todayD.length} ${todayD.length===1?L('stop','место'):L('stops','места')}</span></div>
+  <div class="kpi bad"><span class="mut small">${L('Still owed','Уште се должи')}</span><b>${money(owed)}</b><span class="small mut">${owing} ${owing===1?L('business','фирма'):L('businesses','фирми')}</span></div>
+  <div class="kpi ok"><span class="mut small">${L('Collected (7 days)','Наплатено (7 дена)')}</span><b>${money(coll)}</b></div>
+  <div class="kpi"><span class="mut small">${L('Month sales','Продажба (месец)')}</span><b>${money(mt)}</b></div></div>
+  <div class="card"><h3>${L('Loaves per day','Леб по ден')}</h3><div class="bars">${days.map(d=>`<div class="b ${d.dt===td?'t':''}"><em>${d.n||''}</em><i style="height:${Math.max(3,d.n/mx*72)}px"></i>${pd(d.dt).toLocaleDateString(loc(),{weekday:'narrow'})}</div>`).join('')}</div></div>
+  ${top.length?`<div class="card"><h3>💰 ${L('Needs collecting','За наплата')}</h3><div class="list">${top.map(c=>`<div class="it" data-act="client" data-id="${c.id}"><div class="sp"><b>${esc(c.name)}</b><div class="small mut">${L('oldest unpaid','најстаро неплатено')}: ${fmtD(D.byC[c.id].oldest)}</div></div><div style="text-align:right"><b>${money(D.byC[c.id].due)}</b><div>${ageChip(D.byC[c.id])}</div></div></div>`).join('')}</div></div>`:`<div class="card empty"><b>🎉</b>${L('Everyone has paid. Nice!','Сите платиле. Одлично!')}</div>`}
+  ${notYet.length?`<div class="card"><h3>🚚 ${L('Not delivered yet today','Уште недоставено денес')}</h3><div class="list">${notYet.slice(0,6).map(c=>{const l=D.byC[c.id].last;return `<div class="it"><div class="sp" data-act="client" data-id="${c.id}"><b>${esc(c.name)}</b><div class="small mut">${l?L('last','последно')+': '+loavesOf(l)+' 🍞 · '+fmtD(l.date):L('no deliveries yet','нема достави')}</div></div>
+  ${l?`<button class="btn sm" data-act="repeat" data-id="${c.id}">↻ ${L('Repeat','Повтори')}</button>`:`<button class="btn sm ghost" data-act="newdel" data-id="${c.id}">＋</button>`}</div>`}).join('')}</div>${notYet.length>6?`<div class="small mut" style="margin-top:6px">+${notYet.length-6} ${L('more in Businesses','уште во Фирми')}</div>`:''}</div>`:''}
+  ${ev.length?`<div class="card"><h3>🕑 ${L('Latest activity','Последни активности')}</h3><div class="list">${ev.slice(0,8).map(e=>`<div class="it" style="cursor:default"><div class="sp small">${e.x}</div><span class="mut small">${fmtT(e.t)}</span></div>`).join('')}</div></div>`:''}`;
+}
+
+/* ---------- DELIVERIES ---------- */
+function deliveriesView(){
+  const f=S.f,td=today(),r0={today:td,week:ymd(new Date(Date.now()-6*864e5)),month:td.slice(0,8)+'01',all:'0000'}[f.range];
+  let list=S.deliveries.filter(d=>d.date>=r0&&(!f.client||d.cid===f.client)&&(f.status==='all'||(f.status==='paid'?dueOf(d)<=0:dueOf(d)>0)));
+  const tot=list.reduce((a,d)=>a+d.total,0),due=list.reduce((a,d)=>a+dueOf(d),0),lv=list.reduce((a,d)=>a+loavesOf(d),0);
+  const seg=(k,opts)=>`<div class="seg">${opts.map(o=>`<button class="${f[k]===o[0]?'on':''}" onclick="setF('${k}','${o[0]}')">${o[1]}</button>`).join('')}</div>`;
+  let html=`<div style="margin:12px 0 8px">${seg('range',[['today',L('Today','Денес')],['week',L('7 days','7 дена')],['month',L('Month','Месец')],['all',L('All','Сите')]])}</div>
+  <div class="row" style="margin-bottom:8px"><div class="sp">${seg('status',[['all',L('All','Сите')],['unpaid',L('Unpaid','Неплатени')],['paid',L('Paid','Платени')]])}</div></div>
+  <select onchange="setF('client',this.value)"><option value="">${L('All businesses','Сите фирми')}</option>${S.clients.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option value="${c.id}" ${f.client===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
+  <div class="card row" style="margin-top:12px;justify-content:space-around;text-align:center"><div><b class="serif" style="font-size:22px">${lv}</b><div class="small mut">🍞 ${L('loaves','леба')}</div></div><div><b class="serif" style="font-size:22px">${money(tot)}</b><div class="small mut">${L('total','вкупно')}</div></div><div><b class="serif" style="font-size:22px;color:${due?'var(--bad)':'var(--ok)'}">${money(due)}</b><div class="small mut">${L('unpaid','неплатено')}</div></div></div>`;
+  if(!list.length)return html+`<div class="empty"><b>🧺</b>${L('No deliveries here yet.','Нема достави овде.')}</div>`;
+  let cur='';
+  for(const d of list){if(d.date!==cur){cur=d.date;const day=list.filter(x=>x.date===cur);html+=`<div class="day"><span>${fmtD(cur)}${cur===td?' · '+L('today','денес'):''}</span><span class="mut small" style="font-family:'DM Sans'">${day.reduce((a,x)=>a+loavesOf(x),0)} 🍞 · ${money(day.reduce((a,x)=>a+x.total,0))}</span></div>`}
+    html+=`<div class="card dl" data-act="del" data-id="${d.id}" style="margin:8px 0">${dueOf(d)<=0?`<div class="stamp">${L('PAID','ПЛАТЕНО')}</div>`:''}<b>${esc(clientName(d.cid))}</b><div style="margin:2px 0 6px">${itemsText(d)}</div>
+    <div class="row"><b class="serif">${money(d.total)}</b>${dueOf(d)>0?statusChip(d):''}<span class="sp"></span><span class="small mut">${esc(d.bn)}</span></div></div>`}
+  return html;
+}
+function setF(k,v){S.f[k]=v;render()}
+
+/* ---------- BUSINESSES ---------- */
+function clientsView(){
+  const list=S.clients.slice().sort((a,b)=>(D.byC[b.id].due>0)-(D.byC[a.id].due>0)||D.byC[b.id].due-D.byC[a.id].due||a.name.localeCompare(b.name));
+  return `<div class="row" style="margin:12px 0"><input id="q" type="search" placeholder="🔎 ${L('Search business…','Барај фирма…')}" value="${esc(S.q)}" oninput="setQ(this.value)"><button class="btn" data-act="newclient" style="white-space:nowrap">＋ ${L('Add','Додади')}</button></div>
+  ${list.length?list.map(c=>{const x=D.byC[c.id];return `<div class="card cc" data-n="${esc(c.name.toLowerCase())}" data-act="client" data-id="${c.id}" style="cursor:pointer;${S.q&&!c.name.toLowerCase().includes(S.q.toLowerCase())?'display:none':''}">
+  <div class="row"><div class="sp"><b style="font-size:17px">${esc(c.name)}</b><div class="small mut">${x.n} ${x.n===1?L('delivery','достава'):L('deliveries','достави')} · ${x.loaves} 🍞 ${x.last?'· '+L('last','последно')+' '+fmtD(x.last.date):''}</div></div>
+  <div style="text-align:right">${x.due>0?`<b class="serif" style="color:var(--bad)">${money(x.due)}</b><br>`:''}${ageChip(x)}</div></div></div>`}).join(''):`<div class="empty"><b>🏪</b>${L('No businesses yet.','Нема фирми.')}</div>`}`;
+}
+function setQ(v){S.q=v;document.querySelectorAll('.cc').forEach(e=>e.style.display=(!v||e.dataset.n.includes(v.toLowerCase()))?'':'none')}
+
+/* ---------- SETTINGS / TEAM ---------- */
+function settingsView(){
+  const admin=isAdmin();
+  return `<div class="card"><div class="row">${avatar(S.me,48)}<div class="sp"><b style="font-size:18px">${esc(S.me.name)}</b><div class="small mut">@${esc(S.me.username)} · ${admin?L('Owner','Сопственик'):L('Staff','Вработен')}</div></div>
+  <button class="btn ghost sm" data-act="logout">${L('Sign out','Одјава')}</button></div>
+  <div class="row" style="margin-top:12px"><button class="btn ghost sm" data-act="mypass">🔑 ${L('Change password','Промени лозинка')}</button><button class="lang" onclick="setLang();render()">${lang==='en'?'🇲🇰 Македонски':'🇬🇧 English'}</button></div></div>
+  ${admin?`<div class="card"><h3>👥 ${L('Team','Тим')}</h3><div class="list">${S.staff.map(u=>`<div class="it" data-act="staff" data-id="${u.id}">${avatar(u)}<div class="sp"><b>${esc(u.name)}</b><div class="small mut">@${esc(u.username)}</div></div>${chip(u.role==='admin'?'warn':'ok',u.role==='admin'?L('Owner','Сопственик'):L('Staff','Вработен'))}</div>`).join('')}</div>
+  <button class="btn full" style="margin-top:10px" data-act="newstaff">＋ ${L('Add team member','Додади член')}</button></div>
+  <div class="card"><h3>🍞 ${L('Products & base prices','Производи и основни цени')}</h3><div class="small mut" style="margin-bottom:6px">${L('Emoji · name · base price. Edit and the change saves automatically. A business can have its own special price in its Edit screen.','Емоџи · име · основна цена. Промените се зачувуваат автоматски. Секоја фирма може да има своја цена во Измени.')}</div>${S.products.slice().sort((a,b)=>(a.o||0)-(b.o||0)).map(p=>`<div class="row" style="margin:6px 0"><input style="width:56px;text-align:center" value="${esc(p.e)}" onchange="prodSave('${p.id}','e',this.value)"><input value="${esc(p.n)}" onchange="prodSave('${p.id}','n',this.value)"><input type="number" inputmode="decimal" style="width:92px" value="${p.price}" onchange="prodSave('${p.id}','price',this.value)"><button class="btn ghost sm" data-act="delprod" data-id="${p.id}">🗑</button></div>`).join('')}
+  <button class="btn ghost full" style="margin-top:8px" data-act="newprod">＋ ${L('Add product','Додади производ')}</button></div>
+  <div class="card"><h3>🏷 ${L('Bakery name','Име на пекарата')}</h3><input value="${esc(S.settings.bakery||'')}" onchange="w(()=>api('write','POST',{op:'set',coll:'settings',data:{bakery:this.value}}))">
+  <hr><button class="btn ghost full" data-act="csv">📄 ${L('Export deliveries (CSV)','Извези достави (CSV)')}</button></div>`:''}`;
+}
+function prodSave(id,k,v){const p=S.products.find(x=>x.id===id);if(!p)return;const d={n:p.n,e:p.e,price:p.price};d[k]=k==='price'?+v||0:v;w(()=>api('write','POST',{op:'set',coll:'products',id,data:d}))}
+
+/* ---------- sheets ---------- */
+function openClient(id){
+  const c=S.clients.find(x=>x.id===id);if(!c)return;const x=D.byC[id];
+  const ds=S.deliveries.filter(d=>d.cid===id).slice(0,40);
+  openSheet(`<h2>${esc(c.name)}</h2><div class="mut small">${[c.contact,c.phone,c.address].filter(Boolean).map(esc).join(' · ')||'&nbsp;'}</div>${c.note?`<div class="small" style="margin-top:4px">📝 ${esc(c.note)}</div>`:''}
+  <div class="grid2" style="margin-top:12px"><div class="kpi"><span class="small mut">${L('Delivered','Доставено')}</span><b>${x.loaves} 🍞</b></div><div class="kpi ${x.due>0?'bad':'ok'}"><span class="small mut">${L('Owes','Должи')}</span><b>${money(x.due)}</b></div></div>
+  <div class="row" style="margin:12px 0;flex-wrap:wrap"><button class="btn sp" data-act="newdel" data-id="${id}">＋ ${L('New delivery','Нова достава')}</button>${x.last?`<button class="btn ghost" data-act="repeat" data-id="${id}">↻ ${L('Repeat last','Повтори')}</button>`:''}</div>
+  ${x.due>0?`<div class="card"><h3>💰 ${L('Collect payment','Наплата')}</h3><div class="row"><input id="col-a" type="number" inputmode="decimal" value="${x.due}"><button class="btn ok" data-act="collect" data-id="${id}">${L('Receive','Прими')}</button></div><div class="small mut" style="margin-top:6px">${L('Applied to the oldest unpaid deliveries first.','Се применува на најстарите неплатени достави.')}</div>
+  <div class="row" style="margin-top:10px">${c.phone?`<a class="btn ghost sm" href="tel:${esc(c.phone)}" style="text-decoration:none">📞 ${esc(c.phone)}</a>`:''}<button class="btn ghost sm" data-act="remind" data-id="${id}">💬 ${L('Reminder text','Порака за потсетник')}</button></div></div>`:''}
+  <h3 style="margin:14px 0 4px">${L('History','Историја')}</h3>
+  ${ds.length?`<div class="list">${ds.map(d=>`<div class="it" data-act="del" data-id="${d.id}"><div class="sp"><b>${fmtD(d.date)}</b><div class="small">${itemsText(d)}</div></div><div style="text-align:right"><b>${money(d.total)}</b><div>${statusChip(d)}</div></div></div>`).join('')}</div>`:`<div class="empty">${L('No deliveries yet','Нема достави')}</div>`}
+  <hr><div class="row"><button class="btn ghost sm" data-act="editclient" data-id="${id}">✏️ ${L('Edit','Измени')}</button>${isAdmin()&&!x.n?`<button class="btn ghost sm" data-act="delclient" data-id="${id}">🗑 ${L('Delete','Избриши')}</button>`:''}</div>`);
+}
+function openDelivery(id){
+  const d=S.deliveries.find(x=>x.id===id);if(!d)return;const due=dueOf(d);
+  openSheet(`<h2>${esc(clientName(d.cid))}</h2><div class="mut small">${fmtD(d.date)} · ${L('by','од')} ${esc(d.bn)}</div>
+  <table class="t" style="margin:12px 0">${d.items.map(i=>`<tr><td>${esc(i.e)} ${esc(i.n)} <span class="mut">× ${i.q} @ ${money(i.p)}</span></td><td>${money(i.q*i.p)}</td></tr>`).join('')}
+  <tr><td><b>${L('Total','Вкупно')}</b></td><td>${money(d.total)}</td></tr><tr><td>${L('Paid','Платено')}</td><td style="color:var(--ok)">${money(paidOf(d))}</td></tr><tr><td>${L('Still owed','Должи')}</td><td style="color:${due?'var(--bad)':'var(--ok)'}">${money(due)}</td></tr></table>
+  ${d.note?`<div class="small">📝 ${esc(d.note)}</div>`:''}
+  ${(d.pays||[]).length?`<div class="small mut" style="margin-top:8px">${d.pays.map(p=>`💰 ${money(p.a)} · ${esc(p.bn)} · ${fmtT(p.t)}`).join('<br>')}</div>`:''}
+  ${due>0?`<hr><button class="btn ok full" data-act="payfull" data-id="${id}">✓ ${L('Mark paid in full','Означи платено')} (${money(due)})</button>
+  <div class="row" style="margin-top:8px"><input id="pa" type="number" inputmode="decimal" placeholder="${L('Partial amount','Дел од износот')}"><button class="btn ghost" data-act="paypart" data-id="${id}">${L('Add','Додај')}</button></div>`:''}
+  ${(isAdmin()||d.by===S.me.id)?`<hr><button class="btn ghost full" data-act="deldel" data-id="${id}">🗑 ${L('Delete delivery','Избриши достава')}</button>`:''}`);
+}
+let ND={};
+function openNewDelivery(cid){
+  if(!S.clients.length){toast(L('Add a business first','Прво додади фирма'));return openClientForm()}
+  const prods=S.products.slice().sort((a,b)=>(a.o||0)-(b.o||0));
+  if(!prods.length){toast(L('Owner: add products in Team','Сопственик: додади производи во Тим'));return}
+  ND={pay:'unpaid'};
+  openSheet(`<h2>🚚 ${L('New delivery','Нова достава')}</h2>
+  <label class="f">${L('Business','Фирма')}</label><select id="nd-c" onchange="ndClient(this.value)">${S.clients.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option value="${c.id}" ${c.id===cid?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
+  <label class="f">${L('Date','Датум')}</label><input id="nd-d" type="date" value="${today()}">
+  <label class="f">${L('Bread','Леб')}</label>${prods.map(p=>`<div class="prow" data-pid="${p.id}"><b>${esc(p.e)} ${esc(p.n)}</b><div class="stepper"><button type="button" onclick="step(this,-1)">−</button><input class="q" type="number" inputmode="numeric" min="0" value="0" oninput="calc()"><button type="button" onclick="step(this,1)">+</button><button type="button" onclick="step(this,5)">+5</button><button type="button" onclick="step(this,10)">+10</button><span class="pp"><input class="p" type="number" inputmode="decimal" value="${p.price}" oninput="calc()"></span></div></div>`).join('')}
+  <label class="f">${L('Payment','Плаќање')}</label><div class="seg"><button type="button" class="on" data-act="ndpay" data-v="unpaid">${L('Not paid','Неплатено')}</button><button type="button" data-act="ndpay" data-v="full">${L('Paid in full','Платено')}</button><button type="button" data-act="ndpay" data-v="part">${L('Partial','Делумно')}</button></div>
+  <div id="nd-parts" style="display:none"><input id="nd-pa" type="number" inputmode="decimal" placeholder="${L('Amount received','Примен износ')}" style="margin-top:8px"></div>
+  <label class="f">${L('Note (optional)','Белешка (опционално)')}</label><input id="nd-n">
+  <div class="totalbar"><div class="row" style="margin-bottom:8px"><span class="sp mut"><b id="nd-q">0</b> 🍞</span><b class="serif" style="font-size:24px" id="nd-total">0</b></div><button class="btn full" id="nd-save" data-act="ndsave" disabled>${L('Save delivery','Зачувај достава')}</button></div>`);
+  ndClient($('#nd-c').value);
+}
+function ndClient(cid){
+  const last=D.byC[cid]&&D.byC[cid].last;
+  document.querySelectorAll('#panel .prow').forEach(r=>{const li=last&&last.items.find(i=>i.pid===r.dataset.pid),p=S.products.find(x=>x.id===r.dataset.pid);
+    const cl=S.clients.find(c=>c.id===cid);r.querySelector('.q').value=li?li.q:0;r.querySelector('.p').value=(cl&&cl.prices&&cl.prices[p.id])||p.price});calc();
+}
+function step(btn,d){const i=btn.closest('.stepper').querySelector('.q');i.value=Math.max(0,(+i.value||0)+d);calc()}
+function calc(){let tot=0,q=0;document.querySelectorAll('#panel .prow').forEach(r=>{const a=+r.querySelector('.q').value||0,p=+r.querySelector('.p').value||0;tot+=a*p;q+=a;r.classList.toggle('on',a>0)});
+  ND.total=tot;$('#nd-total').textContent=money(tot);$('#nd-q').textContent=q;$('#nd-save').disabled=!q}
+function openClientForm(id){
+  const c=S.clients.find(x=>x.id===id)||{};
+  openSheet(`<h2>${id?L('Edit business','Измени фирма'):L('New business','Нова фирма')}</h2>
+  <label class="f">${L('Business name','Име на фирма')} *</label><input id="cf-n" value="${esc(c.name)}">
+  <label class="f">${L('Contact person','Контакт лице')}</label><input id="cf-c" value="${esc(c.contact)}">
+  <label class="f">${L('Phone','Телефон')}</label><input id="cf-p" type="tel" value="${esc(c.phone)}">
+  <label class="f">${L('Address','Адреса')}</label><input id="cf-a" value="${esc(c.address)}">
+  <label class="f">${L('Note','Белешка')}</label><input id="cf-t" value="${esc(c.note)}" placeholder="${L('e.g. leave at back door','пр. остави на задна врата')}">
+  <label class="f">💲 ${L('Special prices (leave empty = base price)','Посебни цени (празно = основна цена)')}</label>
+  ${S.products.slice().sort((a,b)=>(a.o||0)-(b.o||0)).map(p=>`<div class="row" style="margin:5px 0" data-pid="${p.id}"><span class="sp">${esc(p.e)} ${esc(p.n)}</span><input class="sp-p" type="number" inputmode="decimal" style="width:110px" placeholder="${p.price}" value="${(c.prices&&c.prices[p.id])||''}"></div>`).join('')}
+  <button class="btn full" style="margin-top:16px" data-act="saveclient" data-id="${id||''}">${L('Save','Зачувај')}</button>`);
+}
+function openStaffForm(id){
+  const u=S.staff.find(x=>x.id===id);
+  openSheet(u?`<h2>${esc(u.name)}</h2><div class="mut small">@${esc(u.username)}</div>
+  <label class="f">${L('Role','Улога')}</label><select id="sf-r" onchange="w(()=>api('users','PATCH',{id:'${u.id}',role:this.value}))"><option value="staff" ${u.role==='staff'?'selected':''}>${L('Staff — can add deliveries & payments','Вработен — додава достави и плаќања')}</option><option value="admin" ${u.role==='admin'?'selected':''}>${L('Owner — full access','Сопственик — пристап до сè')}</option></select>
+  <label class="f">${L('Set new password','Нова лозинка')}</label><div class="row"><input id="sf-p" type="text" placeholder="min 6"><button class="btn" data-act="resetpass" data-id="${u.id}">${L('Set','Постави')}</button></div>
+  ${u.id!==S.me.id?`<hr><button class="btn ghost full" data-act="rmstaff" data-id="${u.id}">🗑 ${L('Remove from team','Отстрани од тимот')}</button>`:''}`
+  :`<h2>${L('Add team member','Нов член на тимот')}</h2><label class="f">${L('Name','Име')}</label><input id="sf-n"><label class="f">${L('Username','Корисничко име')}</label><input id="sf-u" autocapitalize="none">
+  <label class="f">${L('Password (min 6)','Лозинка (мин. 6)')}</label><input id="sf-p" type="text"><label class="f">${L('Role','Улога')}</label><select id="sf-r"><option value="admin">${L('Owner — full access','Сопственик — пристап до сè')}</option><option value="staff">${L('Staff — limited','Вработен — ограничено')}</option></select>
+  <div class="err" id="sf-e"></div><button class="btn full" data-act="savestaff">${L('Add','Додади')}</button>`);
+}
+
+/* ---------- actions ---------- */
+document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el)return;const f=acts[el.dataset.act];if(f){e.preventDefault();f(el,e)}});
+const val=id=>($(id)||{}).value||'';
+acts.close=closeSheet;
+acts.nav=el=>{S.view=el.dataset.v;render();scrollTo(0,0)};
+acts.client=el=>openClient(el.dataset.id);
+acts.del=el=>openDelivery(el.dataset.id);
+acts.newdel=el=>openNewDelivery(el.dataset.id);
+acts.newclient=()=>openClientForm();
+acts.editclient=el=>openClientForm(el.dataset.id);
+acts.newstaff=()=>openStaffForm();
+acts.staff=el=>openStaffForm(el.dataset.id);
+acts.ndpay=el=>{ND.pay=el.dataset.v;el.parentElement.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===el));$('#nd-parts').style.display=ND.pay==='part'?'block':'none'};
+acts.ndsave=async el=>{
+  const items=[...document.querySelectorAll('#panel .prow')].map(r=>{const p=S.products.find(x=>x.id===r.dataset.pid);return{pid:p.id,n:p.n,e:p.e,q:Math.round(+r.querySelector('.q').value||0),p:+r.querySelector('.p').value||0}}).filter(i=>i.q>0);
+  const total=items.reduce((a,i)=>a+i.q*i.p,0);let pay0=0;
+  if(ND.pay==='full')pay0=total;else if(ND.pay==='part')pay0=Math.min(total,Math.max(0,+val('#nd-pa')||0));
+  el.disabled=true;
+  const cid=val('#nd-c');
+  const ok=await w(()=>api('write','POST',{op:'set',coll:'deliveries',data:{cid,date:val('#nd-d'),items,pay0,note:val('#nd-n')}}));
+  if(ok){closeSheet();toast('✓ '+items.reduce((a,i)=>a+i.q,0)+' 🍞 → '+clientName(cid))}else el.disabled=false;
+};
+acts.repeat=async el=>{
+  const cid=el.dataset.id,l=D.byC[cid]&&D.byC[cid].last;if(!l)return;el.disabled=true;
+  let newId=null;
+  const ok=await w(async()=>{const r=await api('write','POST',{op:'set',coll:'deliveries',data:{cid,date:today(),items:l.items,pay0:0}});newId=r.id});
+  if(ok){closeSheet();toast('✓ '+loavesOf(l)+' 🍞 → '+clientName(cid),()=>w(()=>api('write','POST',{op:'delete',coll:'deliveries',id:newId})))}
+};
+acts.collect=async el=>{
+  const a=+val('#col-a')||0;if(a<=0)return;const cid=el.dataset.id;
+  if(await w(()=>api('write','POST',{op:'collect',cid,amount:a}))){toast('💰 '+money(Math.min(a,D.byC[cid].due||a)));openClient(cid)}
+};
+acts.payfull=async el=>{const d=S.deliveries.find(x=>x.id===el.dataset.id);if(await w(()=>api('write','POST',{op:'pay',id:d.id,amount:dueOf(d)}))){closeSheet();toast('✓ '+L('Marked paid','Платено'))}};
+acts.paypart=async el=>{const a=+val('#pa')||0;if(a<=0)return;if(await w(()=>api('write','POST',{op:'pay',id:el.dataset.id,amount:a})))openDelivery(el.dataset.id)};
+acts.deldel=el=>armed(el,async()=>{if(await w(()=>api('write','POST',{op:'delete',coll:'deliveries',id:el.dataset.id}))){closeSheet();toast(L('Deleted','Избришано'))}});
+acts.saveclient=async el=>{
+  const name=val('#cf-n').trim();if(!name){toast(L('Enter a name','Внеси име'));return}
+  const id=el.dataset.id||undefined;let rid;
+  if(await w(async()=>{const r=await api('write','POST',{op:'set',coll:'clients',id,data:{name,contact:val('#cf-c'),phone:val('#cf-p'),address:val('#cf-a'),note:val('#cf-t'),prices:Object.fromEntries([...document.querySelectorAll('#panel [data-pid]')].map(r=>[r.dataset.pid,+r.querySelector('.sp-p').value||0]).filter(x=>x[1]>0))}});rid=r.id})){
+    toast('✓ '+L('Saved','Зачувано'));openClient(rid)}
+};
+acts.delclient=el=>armed(el,async()=>{if(await w(()=>api('write','POST',{op:'delete',coll:'clients',id:el.dataset.id})))closeSheet()});
+acts.remind=el=>{
+  const c=S.clients.find(x=>x.id===el.dataset.id),x=D.byC[c.id];
+  const open=S.deliveries.filter(d=>d.cid===c.id&&dueOf(d)>0).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,6).map(d=>`• ${fmtD(d.date)}: ${money(dueOf(d))}`).join('\n');
+  const txt=L(`Hello ${c.contact||c.name}! 👋\nFriendly reminder from ${S.settings.bakery||'the bakery'}: you have an unpaid balance of ${money(x.due)} for bread deliveries.\n${open}\nThank you! 🥖`,
+  `Здраво ${c.contact||c.name}! 👋\nПријателски потсетник од ${S.settings.bakery||'пекарата'}: имате неплатен износ од ${money(x.due)} за доставен леб.\n${open}\nБлагодарам! 🥖`);
+  openSheet(`<h2>💬 ${L('Reminder text','Порака за потсетник')}</h2><p class="mut small">${L('Copy it and paste into Viber / WhatsApp / SMS.','Копирај и залепи во Viber / WhatsApp / SMS.')}</p><textarea class="copy" id="rt">${esc(txt)}</textarea>
+  <button class="btn full" style="margin-top:10px" data-act="copy">${L('Copy','Копирај')}</button>`);
+};
+acts.copy=async()=>{const t=$('#rt');t.select();try{await navigator.clipboard.writeText(t.value);toast(L('Copied','Копирано'))}catch(e){document.execCommand&&document.execCommand('copy');toast(L('Press copy on the selected text','Копирај го означениот текст'))}};
+acts.csv=()=>{
+  const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const rows=[['Date','Business','Items','Loaves','Total','Paid','Due','Delivered by'].map(q).join(',')];
+  for(const d of S.deliveries)rows.push([d.date,clientName(d.cid),d.items.map(i=>i.n+' x'+i.q).join('; '),loavesOf(d),d.total,paidOf(d),dueOf(d),d.bn].map(q).join(','));
+  openSheet(`<h2>📄 CSV</h2><p class="mut small">${L('Copy and paste into Excel / Google Sheets.','Копирај и залепи во Excel / Google Sheets.')}</p><textarea class="copy" id="rt">${esc(rows.join('\n'))}</textarea><button class="btn full" style="margin-top:10px" data-act="copy">${L('Copy','Копирај')}</button>`);
+};
+acts.savestaff=async()=>{
+  try{await api('users','POST',{name:val('#sf-n'),username:val('#sf-u'),password:val('#sf-p'),role:val('#sf-r')});closeSheet();await sync(true);toast('✓ '+L('Team member added','Членот е додаден'))}
+  catch(e){$('#sf-e').textContent=errText(e)}
+};
+acts.resetpass=async el=>{if(await w(()=>api('users','PATCH',{id:el.dataset.id,password:val('#sf-p')}))){closeSheet();toast('✓ '+L('Password changed','Лозинката е сменета'))}};
+acts.rmstaff=el=>armed(el,async()=>{if(await w(()=>api('users','DELETE',{id:el.dataset.id})))closeSheet()});
+acts.mypass=()=>openSheet(`<h2>🔑 ${L('Change password','Промени лозинка')}</h2><label class="f">${L('Current password','Тековна лозинка')}</label><input id="mp-c" type="password" autocomplete="current-password">
+  <label class="f">${L('New password (min 6)','Нова лозинка (мин. 6)')}</label><input id="mp-n" type="password" autocomplete="new-password"><div class="err" id="mp-e"></div><button class="btn full" data-act="savemypass">${L('Save','Зачувај')}</button>`);
+acts.savemypass=async()=>{try{await api('users','PATCH',{id:S.me.id,current:val('#mp-c'),password:val('#mp-n')});closeSheet();toast('✓ '+L('Password changed','Лозинката е сменета'))}catch(e){$('#mp-e').textContent=errText(e)}};
+acts.newprod=()=>w(()=>api('write','POST',{op:'set',coll:'products',data:{n:L('New bread','Нов леб'),e:'🍞',price:30}}));
+acts.delprod=el=>armed(el,()=>w(()=>api('write','POST',{op:'delete',coll:'products',id:el.dataset.id})),'✓?');
+
+boot();
+</script>
+</body>
+</html>

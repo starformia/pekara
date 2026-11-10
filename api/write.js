@@ -28,6 +28,8 @@ export default async function handler(req, res) {
         if (!name) return send(res, 400, { error: 'name_required' });
         const key = id || uid();
         const old = await getDoc('clients', key);
+        const others = await q("select id, data->>'name' n from docs where coll='clients'");
+        if (others.some((r) => r.id !== key && String(r.n || '').toLowerCase() === name.toLowerCase())) return send(res, 409, { error: 'name_taken' });
         await putDoc('clients', key, {
           name, contact: str(b.data.contact, 80), phone: str(b.data.phone, 40),
           address: str(b.data.address, 160), note: str(b.data.note, 300),
@@ -55,10 +57,17 @@ export default async function handler(req, res) {
           pid: str(i.pid, 40), n: str(i.n, 40), e: str(i.e, 8),
           q: Math.max(0, Math.round(num(i.q))), p: Math.max(0, num(i.p)) })).filter((i) => i.q > 0);
         if (!items.length) return send(res, 400, { error: 'no_items' });
-        if (!(await getDoc('clients', str(b.data.cid, 40)))) return send(res, 400, { error: 'unknown_client' });
         const total = items.reduce((a, i) => a + i.q * i.p, 0);
-        const pay0 = Math.min(total, Math.max(0, num(b.data.pay0)));
         const date = /^\d{4}-\d{2}-\d{2}$/.test(b.data.date || '') ? b.data.date : now.slice(0, 10);
+        if (id) { // edit an existing delivery (payments are kept)
+          const old = await getDoc('deliveries', id);
+          if (!old) return send(res, 404, { error: 'not_found' });
+          if (!admin && old.by !== me.id) return send(res, 403, { error: 'not_yours' });
+          await putDoc('deliveries', id, { ...old, date, items, total, note: str(b.data.note, 300) });
+          return send(res, 200, { id });
+        }
+        if (!(await getDoc('clients', str(b.data.cid, 40)))) return send(res, 400, { error: 'unknown_client' });
+        const pay0 = Math.min(total, Math.max(0, num(b.data.pay0)));
         const key = uid();
         await putDoc('deliveries', key, {
           cid: str(b.data.cid, 40), date, items, total, note: str(b.data.note, 300),
@@ -78,7 +87,8 @@ export default async function handler(req, res) {
       } else if (coll === 'clients') {
         if (!admin) return send(res, 403, { error: 'admin_only' });
         const n = (await q("select count(*)::int c from docs where coll='deliveries' and data->>'cid'=$1", [id]))[0].c;
-        if (n > 0) return send(res, 409, { error: 'has_deliveries' });
+        if (n > 0 && !b.cascade) return send(res, 409, { error: 'has_deliveries' });
+        if (n > 0) await q("delete from docs where coll='deliveries' and data->>'cid'=$1", [id]);
       } else if (coll === 'products') {
         if (!admin) return send(res, 403, { error: 'admin_only' });
       } else return send(res, 400, { error: 'bad_collection' });
@@ -94,6 +104,16 @@ export default async function handler(req, res) {
       d.pays = [...(d.pays || []), { a, t: now, by: me.id, bn: me.name }];
       await putDoc('deliveries', id, d);
       return send(res, 200, { paid: a });
+    }
+
+    if (op === 'unpay') {
+      const d = id && await getDoc('deliveries', id);
+      if (!d) return send(res, 404, { error: 'not_found' });
+      const i = Math.round(num(b.index));
+      if (!d.pays || !d.pays[i]) return send(res, 400, { error: 'bad_index' });
+      d.pays.splice(i, 1);
+      await putDoc('deliveries', id, d);
+      return send(res, 200, { ok: true });
     }
 
     if (op === 'collect') {

@@ -50,9 +50,15 @@ export default async function handler(req, res) {
         if (!admin) return send(res, 403, { error: 'admin_only' });
         const key = id || uid();
         const old = await getDoc('products', key);
+        const rc = b.data?.recipe;
+        const recipe = rc === undefined ? old?.recipe : rc === null ? null : {
+          yield: Math.max(1, Math.round(num(rc.yield)) || 1),
+          items: (Array.isArray(rc.items) ? rc.items : []).slice(0, 40).map((i) => ({
+            n: str(i.n, 40), q: Math.max(0, num(i.q)), u: str(i.u, 8), p: Math.max(0, num(i.p)) }))
+            .filter((i) => i.n || i.q || i.p) };
         await putDoc('products', key, {
           n: str(b.data?.n, 40) || 'Bread', e: str(b.data?.e, 8) || '🍞',
-          price: Math.max(0, num(b.data?.price)), o: old?.o ?? Date.now() });
+          price: Math.max(0, num(b.data?.price)), o: old?.o ?? Date.now(), ...(recipe ? { recipe } : {}) });
         return send(res, 200, { id: key });
       }
       if (coll === 'expenses') {
@@ -66,6 +72,17 @@ export default async function handler(req, res) {
           by: old?.by || me.id, bn: old?.bn || me.name, at: old?.at || now });
         return send(res, 200, { id: key });
       }
+      if (coll === 'cashdays') {
+        if (!admin) return send(res, 403, { error: 'admin_only' });
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(id || '')) return send(res, 400, { error: 'bad_date' });
+        const DEN = ['5000', '2000', '1000', '500', '200', '100', '50', '10'];
+        const notes = {}; let counted = 0;
+        for (const d of DEN) { const c = Math.max(0, Math.round(num(b.data?.notes?.[d]))); if (c) { notes[d] = c; counted += c * Number(d); } }
+        const other = Math.max(0, num(b.data?.other)); counted += other;
+        await putDoc('cashdays', id, { notes, other, counted, expected: num(b.data?.expected), note: str(b.data?.note, 200),
+          by: me.id, bn: me.name, at: now });
+        return send(res, 200, { counted });
+      }
       if (coll === 'monthly') {
         if (!admin) return send(res, 403, { error: 'admin_only' });
         if (!/^\d{4}-\d{2}$/.test(id || '')) return send(res, 400, { error: 'bad_month' });
@@ -74,7 +91,15 @@ export default async function handler(req, res) {
       }
       if (coll === 'settings') {
         if (!admin) return send(res, 403, { error: 'admin_only' });
-        await putDoc('settings', 'main', { bakery: str(b.data?.bakery, 60) || 'Fresh Bread' });
+        const cur = (await getDoc('settings', 'main')) || {};
+        const next = { ...cur };
+        if (b.data?.bakery !== undefined) next.bakery = str(b.data.bakery, 60) || 'Fresh Bread';
+        if (b.data?.backupTo !== undefined) {
+          const em = str(b.data.backupTo, 120);
+          if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return send(res, 400, { error: 'bad_email' });
+          next.backupTo = em;
+        }
+        await putDoc('settings', 'main', next);
         return send(res, 200, { ok: true });
       }
       if (coll === 'deliveries') {

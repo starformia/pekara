@@ -33,6 +33,14 @@ export default async function handler(req, res) {
         await putDoc('clients', key, {
           name, contact: str(b.data.contact, 80), phone: str(b.data.phone, 40),
           address: str(b.data.address, 160), note: str(b.data.note, 300),
+          terms: b.data.terms === null || b.data.terms === '' || b.data.terms === undefined ? null : Math.max(0, Math.min(365, Math.round(num(b.data.terms)))),
+          standing: (() => {
+            const st = b.data.standing; if (!st) return null;
+            const days = [...new Set((st.days || []).map(Number).filter((d) => d >= 0 && d <= 6))];
+            const items = Object.fromEntries(Object.entries(st.items || {}).slice(0, 40)
+              .map(([k, v]) => [str(k, 40), Math.max(0, Math.round(num(v)))]).filter(([, v]) => v > 0));
+            return days.length && Object.keys(items).length ? { days, items } : null;
+          })(),
           prices: Object.fromEntries(Object.entries(b.data.prices || {}).slice(0, 40)
             .map(([k, v]) => [str(k, 40), Math.max(0, num(v))]).filter(([, v]) => v > 0)),
           at: old?.at || now });
@@ -46,6 +54,23 @@ export default async function handler(req, res) {
           n: str(b.data?.n, 40) || 'Bread', e: str(b.data?.e, 8) || '🍞',
           price: Math.max(0, num(b.data?.price)), o: old?.o ?? Date.now() });
         return send(res, 200, { id: key });
+      }
+      if (coll === 'expenses') {
+        if (!admin) return send(res, 403, { error: 'admin_only' });
+        const amt = Math.max(0, num(b.data?.amt));
+        if (!(amt > 0)) return send(res, 400, { error: 'bad_amount' });
+        const key = id || uid();
+        const old = await getDoc('expenses', key);
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(b.data?.date || '') ? b.data.date : now.slice(0, 10);
+        await putDoc('expenses', key, { cat: str(b.data?.cat, 40) || 'other', amt, date, note: str(b.data?.note, 200),
+          by: old?.by || me.id, bn: old?.bn || me.name, at: old?.at || now });
+        return send(res, 200, { id: key });
+      }
+      if (coll === 'monthly') {
+        if (!admin) return send(res, 403, { error: 'admin_only' });
+        if (!/^\d{4}-\d{2}$/.test(id || '')) return send(res, 400, { error: 'bad_month' });
+        await putDoc('monthly', id, { produced: Math.max(0, Math.round(num(b.data?.produced))) });
+        return send(res, 200, { ok: true });
       }
       if (coll === 'settings') {
         if (!admin) return send(res, 403, { error: 'admin_only' });
@@ -89,7 +114,7 @@ export default async function handler(req, res) {
         const n = (await q("select count(*)::int c from docs where coll='deliveries' and data->>'cid'=$1", [id]))[0].c;
         if (n > 0 && !b.cascade) return send(res, 409, { error: 'has_deliveries' });
         if (n > 0) await q("delete from docs where coll='deliveries' and data->>'cid'=$1", [id]);
-      } else if (coll === 'products') {
+      } else if (coll === 'products' || coll === 'expenses') {
         if (!admin) return send(res, 403, { error: 'admin_only' });
       } else return send(res, 400, { error: 'bad_collection' });
       await q('delete from docs where coll=$1 and id=$2', [coll, id]);

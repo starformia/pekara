@@ -13,11 +13,12 @@ export default async function handler(req, res) {
     if (url.searchParams.get('v') === version) return send(res, 200, { same: true, version });
 
     const docs = await q('select coll, id, data from docs');
-    const out = { clients: [], products: [], deliveries: [], settings: {} };
+    const out = { clients: [], products: [], deliveries: [], expenses: [], monthly: [], settings: {} };
     for (const r of docs) {
       if (r.coll === 'settings') out.settings = { ...out.settings, ...r.data };
       else if (out[r.coll]) out[r.coll].push({ id: r.id, ...r.data });
     }
+    if (me.role !== 'admin') { out.expenses = []; out.monthly = []; } // finances are owners-only
     const staff = (await q('select id, username, name, role, color from users order by created_at')).map(publicUser);
     return send(res, 200, { version, me: publicUser(me), staff, ...out });
   } catch (e) {

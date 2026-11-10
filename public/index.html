@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#a4531f">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bread Route">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Bread Route — delivery & payment tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -139,7 +146,7 @@ const fmtT=iso=>{const d=new Date(iso);return ymd(d)===today()?d.toLocaleTimeStr
 const daysBetween=(a,b)=>Math.round((pd(b)-pd(a))/864e5);
 const plural=(n,one,many)=>n===1?one:many;
 
-const S={boot:true,needsSetup:false,me:null,staff:[],clients:[],products:[],deliveries:[],expenses:[],monthly:[],xm:today().slice(0,7),settings:{},version:'',view:'home',
+const S={boot:true,needsSetup:false,me:null,staff:[],clients:[],products:[],deliveries:[],expenses:[],monthly:[],cashdays:[],xm:today().slice(0,7),mt:'exp',tr:6,cd:today(),settings:{},version:'',view:'home',
   f:{range:'week',status:'all',client:''},q:'',screen:'',err:'',offline:false,bp:'30',dirty:false};
 let D={byC:{}};
 const acts={};
@@ -157,6 +164,7 @@ username_taken:['That username is taken','Тоа корисничко име е 
 not_yours:['Only the person who added it (or an owner) can change this','Само тој што го внел (или сопственик) може да го смени'],
 admin_only:['Only an owner can do this','Само сопственик може ова'],has_deliveries:['This business has deliveries','Фирмата има достави'],
 last_admin:['There must be at least one owner','Мора да има барем еден сопственик'],wrong_current:['Current password is wrong','Тековната лозинка е погрешна'],
+email_not_configured:['Email isn’t set up yet — add SMTP_USER and SMTP_PASS in Vercel (see README)','Е-поштата не е подесена — додади SMTP_USER и SMTP_PASS во Vercel (види README)'],bad_email:['That email address doesn’t look right','Е-адресата не изгледа точно'],bad_amount:['Enter an amount','Внеси износ'],
 cannot_remove_self:['You can’t remove yourself','Не можеш да се избришеш себеси'],no_items:['Add at least one bread','Додади барем еден леб']};
 const errText=e=>{const m=ERR[e.code];return m?L(m[0],m[1]):(e.msg||e.message||'Error')};
 const typing=()=>{const a=document.activeElement;return a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&$('#app').contains(a)};
@@ -166,7 +174,7 @@ async function sync(force){
     const j=await api('sync'+(!force&&S.version?'?v='+encodeURIComponent(S.version):''));
     S.offline=false;
     if(j.same)return;
-    Object.assign(S,{version:j.version,me:j.me,staff:j.staff,clients:j.clients,products:j.products,deliveries:j.deliveries,expenses:j.expenses||[],monthly:j.monthly||[],settings:j.settings||{}});
+    Object.assign(S,{version:j.version,me:j.me,staff:j.staff,clients:j.clients,products:j.products,deliveries:j.deliveries,expenses:j.expenses||[],monthly:j.monthly||[],cashdays:j.cashdays||[],settings:j.settings||{}});
     if(typing()&&!force){S.dirty=true;return}
     render();
   }catch(e){
@@ -244,13 +252,13 @@ function render(){
   if(!S.me){if(S.screen!=='login'){S.screen='login';app.innerHTML=loginHTML()}return}
   S.screen='app';const y=window.scrollY;
   const nav=[['home','🏠',L('Today','Денес')],['biz','🏪',L('Businesses','Фирми')],['dels','🧾',L('Deliveries','Достави')]];
-  if(isAdmin())nav.push(['exp','🧮',L('Expenses','Трошоци')]);nav.push(['set','⚙️',L('Team','Тим')]);
+  if(isAdmin())nav.push(['exp','💰',L('Money','Пари')]);nav.push(['set','⚙️',L('Team','Тим')]);
   if(S.view==='exp'&&!isAdmin())S.view='home';
-  const views={home,dels:deliveriesView,biz:clientsView,exp:expensesView,set:settingsView};
+  const views={home,dels:deliveriesView,biz:clientsView,exp:moneyView,set:settingsView};
   app.innerHTML=`<div class="top"><div class="wrap"><div class="logo"><span>🥖</span><span class="n">${esc(S.settings.bakery||'Bread Route')}</span></div>
   <div class="me">${avatar(S.me)}<span>${esc(S.me.name)}</span></div></div></div>
   <div class="wrap">${S.offline?`<div class="banner">${L('Offline — showing last data','Без врска — последни податоци')}</div>`:''}${views[S.view]()}</div>
-  ${S.view==='exp'?`<button class="btn fab" data-act="newexp">＋ ${L('Expense','Трошок')}</button>`:`<button class="btn fab" data-act="newdel">＋ ${L('Delivery','Достава')}</button>`}
+  ${S.view==='exp'?(S.mt==='exp'?`<button class="btn fab" data-act="newexp">＋ ${L('Expense','Трошок')}</button>`:S.mt==='cash'?`<button class="btn fab" data-act="newpay">＋ ${L('Payment','Плаќање')}</button>`:''):`<button class="btn fab" data-act="newdel">＋ ${L('Delivery','Достава')}</button>`}
   <div class="nav">${nav.map(n=>`<button class="${S.view===n[0]?'on':''}" data-act="nav" data-v="${n[0]}"><i>${n[1]}</i>${n[2]}</button>`).join('')}</div>`;
   window.scrollTo(0,y);
 }
@@ -366,13 +374,19 @@ function settingsView(){
   return `<div class="card"><div class="row">${avatar(S.me,48)}<div class="sp"><b style="font-size:18px">${esc(S.me.name)}</b><div class="small mut">@${esc(S.me.username)} · ${admin?L('Owner','Сопственик'):L('Staff','Вработен')}</div></div>
   <button class="btn ghost sm" data-act="logout">${L('Sign out','Одјава')}</button></div>
   <div class="row" style="margin-top:12px"><button class="btn ghost sm" data-act="mypass">🔑 ${L('Change password','Промени лозинка')}</button><button class="lang" onclick="setLang();render()">${lang==='en'?'🇲🇰 Македонски':'🇬🇧 English'}</button></div></div>
+  <div class="card"><h3>📲 ${L('Install as an app','Инсталирај како апликација')}</h3><p class="small mut" style="margin:0 0 8px">${L('iPhone: open in Safari → Share → “Add to Home Screen”. Android: Chrome menu ⋮ → “Install app”. It then opens full screen from its own icon.','iPhone: отвори во Safari → Share → „Add to Home Screen“. Android: Chrome мени ⋮ → „Install app“. Потоа се отвора на цел екран со своја иконка.')}</p>
+  <button class="btn full" id="inst" data-act="install" style="display:${window.__bip?'block':'none'}">📲 ${L('Install now','Инсталирај сега')}</button></div>
   ${admin?`<div class="card"><h3>👥 ${L('Team','Тим')}</h3><div class="list">${S.staff.map(u=>`<div class="it" data-act="staff" data-id="${u.id}">${avatar(u)}<div class="sp"><b>${esc(u.name)}</b><div class="small mut">@${esc(u.username)}</div></div>${chip(u.role==='admin'?'warn':'ok',u.role==='admin'?L('Owner','Сопственик'):L('Staff','Вработен'))}</div>`).join('')}</div>
   <button class="btn full" style="margin-top:10px" data-act="newstaff">＋ ${L('Add team member','Додади член')}</button></div>
   <div class="card"><h3>🍞 ${L('Products & base prices','Производи и основни цени')}</h3><div class="small mut" style="margin-bottom:6px">${L('Emoji · name · base price. Changes save automatically. A business can have its own prices — set them in that business’s Edit screen.','Емоџи · име · основна цена. Промените се зачувуваат автоматски. Секоја фирма може да има свои цени — во Измени на фирмата.')}</div>
   ${prodsSorted().map(p=>`<div class="row" style="margin:6px 0"><input style="width:56px;text-align:center;flex:none" value="${esc(p.e)}" onchange="prodSave('${p.id}','e',this.value)"><input value="${esc(p.n)}" onchange="prodSave('${p.id}','n',this.value)"><input type="number" inputmode="decimal" style="width:92px;flex:none" value="${p.price}" onchange="prodSave('${p.id}','price',this.value)"><button class="btn dangerghost sm" style="flex:none" data-act="delprod" data-id="${p.id}">🗑</button></div>`).join('')}
   <button class="btn ghost full" style="margin-top:8px" data-act="newprod">＋ ${L('Add product','Додади производ')}</button></div>
   <div class="card"><h3>🏷 ${L('Bakery name','Име на пекарата')}</h3><input value="${esc(S.settings.bakery||'')}" onchange="w(()=>api('write','POST',{op:'set',coll:'settings',data:{bakery:this.value}}))">
-  <hr><button class="btn ghost full" data-act="csv">📄 ${L('Export deliveries (CSV)','Извези достави (CSV)')}</button></div>`:''}`;
+  <hr><button class="btn ghost full" data-act="csv">📄 ${L('Export deliveries (CSV)','Извези достави (CSV)')}</button></div>
+  <div class="card"><h3>💾 ${L('Backup & export','Резервна копија и извоз')}</h3><div class="small mut" style="margin-bottom:6px">${L('A full backup is emailed automatically every Monday, and you can send one any time. It contains Excel-ready CSV files and a complete copy of all data.','Целосна резервна копија се праќа автоматски секој понеделник, а може и кога сакаш. Содржи CSV датотеки за Excel и комплетна копија на сите податоци.')}</div>
+  <label class="f">${L('Send backups to','Прати копии на')}</label><input type="email" inputmode="email" value="${esc(S.settings.backupTo||'markokjanzo98@gmail.com')}" onchange="w(()=>api('write','POST',{op:'set',coll:'settings',data:{backupTo:this.value}}))">
+  <button class="btn full" style="margin-top:10px" data-act="emailbk">📧 ${L('Email backup now','Прати копија сега')}</button>
+  <div class="row wrapr" style="margin-top:10px"><button class="btn ghost sm" data-act="dl" data-k="deliveries">⬇ ${L('Deliveries','Достави')}</button><button class="btn ghost sm" data-act="dl" data-k="payments">⬇ ${L('Payments','Плаќања')}</button><button class="btn ghost sm" data-act="dl" data-k="expenses">⬇ ${L('Expenses','Трошоци')}</button><button class="btn ghost sm" data-act="dl" data-k="json">⬇ ${L('Everything (JSON)','Сè (JSON)')}</button></div></div>`:''}`;
 }
 function prodSave(id,k,v){const p=S.products.find(x=>x.id===id);if(!p)return;const d={n:p.n,e:p.e,price:p.price};d[k]=k==='price'?+v||0:v;w(()=>api('write','POST',{op:'set',coll:'products',id,data:d}))}
 
@@ -669,6 +683,158 @@ acts.savexp=async el=>{
 acts.delexp=el=>{const e=S.expenses.find(x=>x.id===el.dataset.id);if(!e)return;
   confirmBox({title:L('Delete this expense?','Да се избрише трошокот?'),msg:`${catInfo(e.cat).n} · ${money(e.amt)} · ${fmtD(e.date)}`,
   onOk:async()=>{if(await w(()=>api('write','POST',{op:'delete',coll:'expenses',id:e.id})))closeSheet()}})};
+
+/* ================= MONEY TAB: wrapper ================= */
+function moneyView(){
+  const tabs=[['exp','🧾',L('Expenses','Трошоци')],['rec','🍞',L('Recipes','Рецепти')],['trend','📈',L('Trends','Трендови')],['cash','💵',L('Cash','Каса')]];
+  return `<div class="seg" style="margin:12px 0">${tabs.map(t=>`<button class="${S.mt===t[0]?'on':''}" onclick="S.mt='${t[0]}';render()">${t[1]} ${t[2]}</button>`).join('')}</div>`+({exp:expensesView,rec:recipesView,trend:trendsView,cash:cashView}[S.mt]||expensesView)();
+}
+const sumBy=(a,f)=>a.reduce((x,y)=>x+f(y),0);
+const kfmt=n=>Math.abs(n)>=1000?(n/1000).toFixed(Math.abs(n)>=10000?0:1).replace('.0','')+'k':String(Math.round(n));
+
+/* ================= RECIPE COSTING ================= */
+const ING=['flour','yeast','sugar','salt','oil'];
+function overhead(){const m=today().slice(0,7),ex=S.expenses.filter(e=>e.date.startsWith(m)),ds=S.deliveries.filter(d=>d.date.startsWith(m));
+  const mo=S.monthly.find(x=>x.id===m),sold=sumBy(ds,loavesOf),made=mo&&mo.produced>0?mo.produced:sold,tot=sumBy(ex.filter(e=>!ING.includes(e.cat)),e=>e.amt);
+  return {per:made?tot/made:0,total:tot,made}}
+const recipeCost=p=>{const r=p.recipe;if(!r||!r.items||!r.items.length)return null;const batch=sumBy(r.items,i=>i.q*i.p);return {batch,per:batch/(r.yield||1)}};
+const fix2=n=>(Math.round(n*100)/100).toFixed(2);
+function recipesView(){
+  const oh=overhead();
+  return `<div class="card"><h3>🍞 ${L('Cost of each bread','Цена на секој леб')}</h3><div class="small mut">${L('Enter what goes into one batch of each bread. Overhead (electricity, water, wages, gas…) is added automatically from this month’s Expenses','Внеси што оди во една шарža од секој леб. Режиските (струја, вода, плати, гас…) се додаваат автоматски од трошоците овој месец')}: <b>${fix2(oh.per)} ${L('per loaf','по леб')}</b>${oh.made?'':' ('+L('no loaves yet this month','уште нема леб овој месец')+')'}.</div></div>
+  ${prodsSorted().map(p=>{const rc=recipeCost(p);if(!rc)return `<div class="card" data-act="recipe" data-id="${p.id}" style="cursor:pointer"><div class="row"><div class="sp"><b>${esc(p.e)} ${esc(p.n)}</b><div class="small mut">${L('No recipe yet','Уште нема рецепт')}</div></div>${chip('warn','＋ '+L('Set up','Подеси'))}</div></div>`;
+    const full=rc.per+oh.per,profit=p.price-full,mg=p.price?Math.round(profit/p.price*100):0;
+    return `<div class="card" data-act="recipe" data-id="${p.id}" style="cursor:pointer"><div class="row"><div class="sp"><b style="font-size:17px">${esc(p.e)} ${esc(p.n)}</b><div class="small mut">${L('sells for','се продава за')} ${money(p.price)}</div></div>${chip(profit>=0?'ok':'bad',(profit>=0?'+':'')+fix2(profit)+' · '+mg+'%')}</div>
+    <div class="grid2" style="margin-top:8px"><div><div class="small mut">${L('Ingredients','Состојки')}</div><b>${fix2(rc.per)}</b></div><div><div class="small mut">${L('+ Overhead','+ Режија')}</div><b>${fix2(oh.per)}</b></div></div>
+    <div class="statline" style="margin-top:8px"><span>${L('Full cost per loaf','Целосна цена по леб')}</span><b class="serif" style="font-size:20px">${fix2(full)} ${lang==='mk'?'ден.':'MKD'}</b></div></div>`}).join('')||`<div class="empty">${L('Add products first (Team tab)','Прво додади производи (Тим)')}</div>`}`;
+}
+const UNITS=['kg','g','l','ml','pcs'];
+const QUICK=[['Flour','Брашно','kg'],['Yeast','Квасец','g'],['Salt','Сол','kg'],['Sugar','Шеќер','kg'],['Oil','Масло','l'],['Water','Вода','l'],['Milk','Млеко','l'],['Eggs','Јајца','pcs']];
+const rrowHtml=(i={})=>`<div class="prow rrow"><div class="row"><input class="rn" placeholder="${L('Ingredient','Состојка')}" value="${esc(i.n||'')}" oninput="rcalc()"><button class="btn dangerghost sm" style="flex:none" data-act="rcdel" aria-label="remove">✕</button></div>
+  <div class="row" style="margin-top:6px"><input class="rq" type="number" inputmode="decimal" placeholder="${L('Amount','Количина')}" value="${i.q||''}" oninput="rcalc()"><select class="ru" style="width:84px;flex:none" onchange="rcalc()">${UNITS.map(u=>`<option ${u===(i.u||'kg')?'selected':''}>${u}</option>`).join('')}</select><input class="rp" type="number" inputmode="decimal" placeholder="${L('Price / unit','Цена / ед.')}" value="${i.p||''}" oninput="rcalc()"></div><div class="small mut rsub" style="margin-top:4px;text-align:right"></div></div>`;
+let RC=null;
+function openRecipe(id){
+  const p=S.products.find(x=>x.id===id);if(!p)return;const r=p.recipe||{yield:'',items:[]};RC={id};
+  openSheet({tall:true,title:p.e+' '+p.n,
+  body:`<div class="small mut" style="margin:6px 0">${L('One batch = everything you mix and bake at once. Price per unit is what you pay for 1 kg / 1 l / 1 piece.','Една шаржа = сè што месиш и печеш одеднаш. Цена по единица е колку плаќаш за 1 кг / 1 л / 1 парче.')}</div>
+  <label class="f">${L('This batch makes (loaves)','Оваа шаржа дава (леба)')}</label><input id="rc-y" type="number" inputmode="numeric" placeholder="e.g. 20" value="${r.yield||''}" oninput="rcalc()">
+  <label class="f">${L('Ingredients','Состојки')}</label><div id="rc-rows">${(r.items||[]).map(rrowHtml).join('')}</div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">${QUICK.map(q=>`<button type="button" class="btn ghost sm" data-act="rcadd" data-n="${L(q[0],q[1])}" data-u="${q[2]}">＋ ${L(q[0],q[1])}</button>`).join('')}<button type="button" class="btn ghost sm" data-act="rcadd">＋ ${L('Other','Друго')}</button></div>
+  <div class="card" id="rc-sum" style="margin-top:12px"></div>
+  ${p.recipe?`<button class="btn dangerghost full" data-act="rcclear">🗑 ${L('Remove recipe','Отстрани рецепт')}</button>`:''}`,
+  footer:`<button class="btn full" data-act="rcsave">${L('Save recipe','Зачувај рецепт')}</button>`});
+  rcalc();
+}
+function rcRead(){const items=[...document.querySelectorAll('#rc-rows .rrow')].map(r=>({n:r.querySelector('.rn').value.trim(),q:+r.querySelector('.rq').value||0,u:r.querySelector('.ru').value,p:+r.querySelector('.rp').value||0}));return {yield:Math.round(+val('#rc-y')||0),items}}
+function rcalc(){
+  const p=S.products.find(x=>x.id===RC.id),r=rcRead(),oh=overhead();
+  document.querySelectorAll('#rc-rows .rrow').forEach((row,i)=>{const t=r.items[i].q*r.items[i].p;row.querySelector('.rsub').textContent=t?'= '+money(t):''});
+  const batch=sumBy(r.items,i=>i.q*i.p),per=r.yield?batch/r.yield:0,full=per+oh.per,profit=p.price-full,tgt=+(ls('bk_target')||30);
+  $('#rc-sum').innerHTML=`<div class="statline"><span class="mut">${L('Cost of the whole batch','Цена на целата шаржа')}</span><b>${money(batch)}</b></div>
+  <div class="statline"><span class="mut">${L('Ingredients per loaf','Состојки по леб')}</span><b>${r.yield?fix2(per):'—'}</b></div>
+  <div class="statline"><span class="mut">${L('Overhead per loaf (from Expenses)','Режија по леб (од Трошоци)')}</span><b>${fix2(oh.per)}</b></div>
+  <div class="statline"><span><b>${L('Full cost per loaf','Целосна цена по леб')}</b></span><b class="serif" style="font-size:22px">${r.yield?fix2(full):'—'}</b></div>
+  <div class="statline"><span class="mut">${L('Current selling price','Моментална продажна цена')}</span><b>${money(p.price)}</b></div>
+  <div class="statline"><span class="mut">${L('Profit per loaf','Профит по леб')}</span><b style="color:${profit>=0?'var(--ok)':'var(--bad)'}">${r.yield?(profit>=0?'+':'')+fix2(profit)+' ('+(p.price?Math.round(profit/p.price*100):0)+'%)':'—'}</b></div>
+  <div class="row" style="margin-top:10px"><span class="sp small mut">${L('Price for a target margin of','Цена за целна маргина од')}</span><input type="number" inputmode="numeric" value="${tgt}" style="width:80px;flex:none;text-align:right" onchange="ls('bk_target',this.value);rcalc()"><span>%</span></div>
+  <div class="statline"><span><b>${L('Suggested price','Предложена цена')}</b></span><b class="serif" style="font-size:22px">${r.yield&&tgt<100?fix2(full/(1-tgt/100)):'—'}</b></div>`;
+}
+acts.recipe=el=>openRecipe(el.dataset.id);
+acts.rcadd=el=>{const d=document.createElement('div');d.innerHTML=rrowHtml({n:el.dataset.n||'',u:el.dataset.u||'kg'});$('#rc-rows').appendChild(d.firstElementChild);rcalc();if(!el.dataset.n){const rows=document.querySelectorAll('#rc-rows .rn');rows[rows.length-1].focus()}};
+acts.rcdel=el=>{el.closest('.rrow').remove();rcalc()};
+acts.rcsave=async()=>{const p=S.products.find(x=>x.id===RC.id),r=rcRead();r.items=r.items.filter(i=>i.n||i.q||i.p);if(!r.yield){toast(L('Enter how many loaves the batch makes','Внеси колку леба дава шаржата'));return}
+  if(await w(()=>api('write','POST',{op:'set',coll:'products',id:p.id,data:{n:p.n,e:p.e,price:p.price,recipe:r}}))){closeSheet();toast('✓ '+L('Recipe saved','Рецептот е зачуван'))}};
+acts.rcclear=()=>{const p=S.products.find(x=>x.id===RC.id);confirmBox({title:L('Remove this recipe?','Да се отстрани рецептот?'),msg:p.n,ok:L('Remove','Отстрани'),
+  onOk:async()=>{if(await w(()=>api('write','POST',{op:'set',coll:'products',id:p.id,data:{n:p.n,e:p.e,price:p.price,recipe:null}})))closeSheet()}})};
+
+/* ================= TRENDS ================= */
+function trendsView(){
+  const N=S.tr,cur=today().slice(0,7),months=[...Array(N)].map((_,i)=>shiftMonth(cur,-(N-1-i)));
+  const data=months.map(m=>{const ds=S.deliveries.filter(d=>d.date.startsWith(m)),sales=sumBy(ds,d=>d.total),exp=sumBy(S.expenses.filter(e=>e.date.startsWith(m)),e=>e.amt),loaves=sumBy(ds,loavesOf);
+    let coll=0;for(const d of S.deliveries)for(const p of d.pays||[])if(ymd(new Date(p.t)).startsWith(m))coll+=p.a;
+    return {m,sales,exp,profit:sales-exp,coll,loaves,cpl:loaves?exp/loaves:null}});
+  const maxV=Math.max(1,...data.flatMap(d=>[d.sales,d.exp,d.profit])),minV=Math.min(0,...data.map(d=>d.profit)),top=18,bot=200,Y=v=>top+(maxV-v)/(maxV-minV)*(bot-top),gw=600/N,bw=Math.min(26,gw*.24);
+  const cols=['#e8a83a','#a4531f'];
+  const svg=`<svg viewBox="0 0 600 232" style="width:100%;height:auto"><line x1="0" x2="600" y1="${Y(0)}" y2="${Y(0)}" stroke="#d9c7a1"/>${data.map((d,i)=>{const x=i*gw+gw/2,bars=[[d.sales,cols[0]],[d.exp,cols[1]],[d.profit,d.profit>=0?'#2f7d4f':'#b3352a']];
+    return bars.map((b,j)=>{const bx=x+(j-1)*(bw+2)-bw/2,y1=Y(Math.max(b[0],0)),y2=Y(Math.min(b[0],0));return `<rect x="${bx}" y="${y1}" width="${bw}" height="${Math.max(1.5,y2-y1)}" rx="3" fill="${b[1]}"/>${N<=6&&b[0]?`<text x="${bx+bw/2}" y="${b[0]>=0?y1-3:y2+11}" text-anchor="middle" font-size="9" fill="#8b7358">${kfmt(b[0])}</text>`:''}`}).join('')+`<text x="${x}" y="222" text-anchor="middle" font-size="11" fill="#8b7358">${new Date(+d.m.slice(0,4),+d.m.slice(5,7)-1,15).toLocaleDateString(loc(),{month:'short'})}</text>`}).join('')}</svg>`;
+  const cs={};for(const d of S.deliveries){const mm=d.date.slice(0,7);if(mm>=months[0])cs[d.cid]=(cs[d.cid]||0)+d.total}
+  const topc=Object.entries(cs).sort((a,b)=>b[1]-a[1]).slice(0,6),tmx=Math.max(1,...topc.map(x=>x[1]));
+  const any=data.some(d=>d.sales||d.exp);
+  return `<div class="seg" style="margin-bottom:10px"><button class="${N===6?'on':''}" onclick="S.tr=6;render()">${L('6 months','6 месеци')}</button><button class="${N===12?'on':''}" onclick="S.tr=12;render()">${L('12 months','12 месеци')}</button></div>
+  ${any?`<div class="card"><div class="row small" style="gap:14px;flex-wrap:wrap;margin-bottom:6px"><span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#e8a83a"></i> ${L('Sales','Продажба')}</span><span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#a4531f"></i> ${L('Expenses','Трошоци')}</span><span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#2f7d4f"></i> ${L('Profit','Профит')}</span></div>${svg}</div>
+  <div class="card" style="overflow-x:auto"><table class="t" style="font-size:14px;min-width:420px"><tr style="color:var(--mut);font-size:12px"><td>${L('Month','Месец')}</td><td>${L('Sales','Продажба')}</td><td>${L('Expenses','Трошоци')}</td><td>${L('Profit','Профит')}</td><td>${L('Cost/loaf','Цена/леб')}</td></tr>
+  ${data.slice().reverse().map(d=>`<tr><td style="font-weight:700;text-align:left">${new Date(+d.m.slice(0,4),+d.m.slice(5,7)-1,15).toLocaleDateString(loc(),{month:'short',year:'2-digit'})}</td><td>${money(d.sales)}</td><td>${money(d.exp)}</td><td style="color:${d.profit>=0?'var(--ok)':'var(--bad)'}">${money(d.profit)}</td><td>${d.cpl===null?'—':fix2(d.cpl)}</td></tr>`).join('')}</table></div>
+  ${topc.length?`<div class="card"><h3>🏆 ${L('Best customers','Најдобри купувачи')}</h3>${topc.map(([id,v])=>`<div style="margin:9px 0"><div class="row"><span class="sp">${esc(clientName(id))}</span><b>${money(v)}</b></div><div class="meter" style="background:#f3e6c9;margin-top:3px"><i style="width:${Math.round(v/tmx*100)}%;background:var(--gold)"></i></div></div>`).join('')}</div>`:''}`
+  :`<div class="empty"><b>📈</b>${L('Trends appear once you have deliveries and expenses.','Трендовите се појавуваат кога ќе има достави и трошоци.')}</div>`}`;
+}
+
+/* ================= CASH BOOK ================= */
+const DEN=[5000,2000,1000,500,200,100,50,10];
+function dayData(day){
+  const rec=[];for(const d of S.deliveries)for(const p of d.pays||[])if(ymd(new Date(p.t))===day)rec.push({a:p.a,bn:p.bn,t:p.t,cid:d.cid});
+  rec.sort((a,b)=>b.t.localeCompare(a.t));const ex=S.expenses.filter(e=>e.date===day);
+  const inn=sumBy(rec,r=>r.a),out=sumBy(ex,e=>e.amt);return {rec,ex,inn,out,expected:inn-out,closed:S.cashdays.find(c=>c.id===day)}
+}
+const diffChip=d=>d===0?chip('ok','✓ '+L('Matches','Точно')):d>0?chip('warn','+'+money(d)+' '+L('extra','вишок')):chip('bad',money(d)+' '+L('short','мањок'));
+function cashView(){
+  const day=S.cd,td=today(),{rec,ex,inn,out,expected,closed}=dayData(day);
+  const hist=S.cashdays.slice().sort((a,b)=>b.id.localeCompare(a.id)).slice(0,14);
+  return `<div class="row" style="margin:6px 0 12px"><button class="btn ghost sm" style="flex:none" onclick="S.cd=daysAgoFrom(S.cd,-1);render()">‹</button><h2 class="sp" style="text-align:center;font-size:19px">${day===td?L('Today','Денес')+' · ':''}${fmtD(day)}</h2><button class="btn ghost sm" style="flex:none" ${day>=td?'disabled':''} onclick="S.cd=daysAgoFrom(S.cd,1);render()">›</button></div>
+  <div class="card" style="background:linear-gradient(135deg,#fff3d6,#fffaf1)"><div class="small mut">💵 ${L('Should be in the till','Треба да има во каса')}</div><div class="serif" style="font-size:38px;color:var(--crust2)">${money(expected)}</div>
+  <div class="row small" style="margin-top:6px"><span class="sp">⬇ ${L('Received','Примено')} <b style="color:var(--ok)">${money(inn)}</b></span><span class="sp" style="text-align:right">⬆ ${L('Spent','Потрошено')} <b style="color:var(--bad)">${money(out)}</b></span></div></div>
+  <div class="card"><div class="row"><h3 class="sp" style="margin:0">💰 ${L('Payments received','Примени плаќања')}</h3><button class="btn sm" data-act="newpay">＋ ${L('Record','Запиши')}</button></div>
+  ${rec.length?`<div class="list" style="margin-top:6px">${rec.map(r=>`<div class="it" data-act="client" data-id="${r.cid}"><div class="sp"><b>${esc(clientName(r.cid))}</b><div class="small mut">${new Date(r.t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} · ${esc(r.bn)}</div></div><b style="color:var(--ok)">+${money(r.a)}</b></div>`).join('')}</div>`:`<div class="empty"><b>🪙</b>${L('Nobody has paid on this day yet.','Никој не платил овој ден.')}</div>`}</div>
+  ${ex.length?`<div class="card"><h3>⬆ ${L('Spent','Потрошено')}</h3><div class="list">${ex.map(e=>{const ci=catInfo(e.cat);return `<div class="it" data-act="editexp" data-id="${e.id}"><span style="font-size:20px">${ci.e}</span><div class="sp"><b>${esc(ci.n)}</b>${e.note?`<div class="small mut">${esc(e.note)}</div>`:''}</div><b style="color:var(--bad)">−${money(e.amt)}</b></div>`}).join('')}</div></div>`:''}
+  <div class="card"><h3>🧮 ${L('Close the day','Затвори го денот')}</h3>
+  ${closed?`<div class="row"><div class="sp"><div class="small mut">${L('Counted','Избројано')} · ${esc(closed.bn)}</div><b class="serif" style="font-size:24px">${money(closed.counted)}</b></div>${diffChip(closed.counted-closed.expected)}</div>${closed.note?`<div class="small" style="margin-top:6px">📝 ${esc(closed.note)}</div>`:''}<button class="btn ghost full" style="margin-top:10px" data-act="count">${L('Count again','Изброј повторно')}</button>`
+  :`<div class="small mut" style="margin-bottom:8px">${L('Count the notes in the till and the app compares it with what it expects.','Изброј ги банкнотите во касата и апликацијата ги споредува со очекуваното.')}</div><button class="btn full" data-act="count">🧮 ${L('Count the till','Изброј ја касата')}</button>`}</div>
+  ${hist.length?`<div class="card"><h3>📒 ${L('Closed days','Затворени денови')}</h3><div class="list">${hist.map(c=>`<div class="it" onclick="S.cd='${c.id}';render();scrollTo(0,0)"><div class="sp"><b>${fmtD(c.id)}</b><div class="small mut">${L('counted','избројано')} ${money(c.counted)}</div></div>${diffChip(c.counted-c.expected)}</div>`).join('')}</div></div>`:''}`;
+}
+const daysAgoFrom=(d,n)=>ymd(new Date(pd(d).getTime()+n*864e5));
+function openCount(){
+  const day=S.cd,{expected,closed}=dayData(day);const nt=(closed&&closed.notes)||{};
+  openSheet({tall:true,title:'🧮 '+L('Count the till','Изброј ја касата'),
+  body:`<div class="small mut" style="margin:6px 0">${fmtD(day)} · ${L('should be','треба да е')} <b>${money(expected)}</b></div>
+  ${DEN.map(d=>`<div class="prow" data-den="${d}"><div class="row"><b class="sp">${d.toLocaleString('en-US')} ${lang==='mk'?'ден.':'MKD'}</b><span class="small mut cs"></span></div><div class="stepper"><button type="button" onclick="cstep(this,-1)">−</button><input class="q" type="number" inputmode="numeric" min="0" value="${nt[d]||0}" oninput="ccalc()"><button type="button" onclick="cstep(this,1)">+</button><button type="button" onclick="cstep(this,5)">+5</button></div></div>`).join('')}
+  <label class="f">${L('Coins / other money','Ситни / друго')} (${lang==='mk'?'ден.':'MKD'})</label><input id="c-other" type="number" inputmode="decimal" value="${(closed&&closed.other)||''}" oninput="ccalc()">
+  <label class="f">${L('Note (optional)','Белешка (опционално)')}</label><input id="c-note" value="${esc(closed?closed.note:'')}" placeholder="${L('e.g. 500 given to driver','пр. 500 дадени на возачот')}">`,
+  footer:`<div class="row" style="margin-bottom:8px"><span class="sp"><span class="small mut">${L('Counted','Избројано')}</span><br><b class="serif" style="font-size:24px" id="c-total">0</b></span><span id="c-diff"></span></div><button class="btn full" data-act="closeday">${L('Save & close the day','Зачувај и затвори го денот')}</button>`});
+  ccalc();
+}
+function cstep(btn,d){const i=btn.closest('.stepper').querySelector('.q');i.value=Math.max(0,(+i.value||0)+d);ccalc()}
+function cRead(){const notes={};let tot=0;document.querySelectorAll('#pb [data-den]').forEach(r=>{const c=Math.round(+r.querySelector('.q').value||0);if(c){notes[r.dataset.den]=c;tot+=c*+r.dataset.den}});const other=+val('#c-other')||0;return {notes,other,total:tot+other}}
+function ccalc(){const c=cRead(),{expected}=dayData(S.cd);document.querySelectorAll('#pb [data-den]').forEach(r=>{const n=+r.querySelector('.q').value||0;r.classList.toggle('on',n>0);r.querySelector('.cs').textContent=n?'= '+money(n*+r.dataset.den):''});
+  $('#c-total').textContent=money(c.total);$('#c-diff').innerHTML=diffChip(c.total-expected)}
+acts.count=()=>openCount();
+acts.closeday=async()=>{const c=cRead(),{expected}=dayData(S.cd);
+  if(await w(()=>api('write','POST',{op:'set',coll:'cashdays',id:S.cd,data:{notes:c.notes,other:c.other,expected,note:val('#c-note')}}))){closeSheet();toast('✓ '+L('Day closed','Денот е затворен'))}};
+function openPay(){
+  const cl=S.clients.slice().sort((a,b)=>(D.byC[b.id].due>0)-(D.byC[a.id].due>0)||a.name.localeCompare(b.name));
+  if(!cl.length){toast(L('Add a business first','Прво додади фирма'));return}
+  openSheet({title:'💰 '+L('Record a payment','Запиши плаќање'),
+  body:`<label class="f">${L('Who paid?','Кој плати?')}</label><select id="pp-c" onchange="payClient(this.value)">${cl.map(c=>`<option value="${c.id}">${esc(c.name)}${D.byC[c.id].due>0?' — '+money(D.byC[c.id].due):''}</option>`).join('')}</select>
+  <label class="f">${L('Amount received','Примен износ')}</label><input id="pp-a" type="number" inputmode="decimal"><div class="small mut" id="pp-h" style="margin-top:6px"></div>`,
+  footer:`<button class="btn ok full" data-act="savepay">✓ ${L('Save payment','Зачувај плаќање')}</button>`});
+  payClient(cl[0].id);
+}
+function payClient(id){const due=D.byC[id].due;$('#pp-a').value=due||'';$('#pp-h').textContent=due?L('Applied to the oldest unpaid deliveries first.','Се применува на најстарите неплатени достави.'):L('This business owes nothing right now.','Оваа фирма моментално не должи.')}
+acts.newpay=()=>openPay();
+acts.savepay=async()=>{const cid=val('#pp-c'),a=+val('#pp-a')||0,due=D.byC[cid].due;if(a<=0){toast(L('Enter an amount','Внеси износ'));return}if(!due){toast(L('Nothing to pay for this business','Нема што да се плати за оваа фирма'));return}
+  if(await w(()=>api('write','POST',{op:'collect',cid,amount:a}))){closeSheet();toast('💰 '+clientName(cid)+' · '+money(Math.min(a,due)))}};
+
+/* ================= BACKUP / EXPORT / INSTALL ================= */
+function download(name,content,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:type||'text/csv;charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+const csvq=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+acts.dl=el=>{const k=el.dataset.k,d=today();
+  if(k==='deliveries')download(`deliveries-${d}.csv`,'\uFEFF'+[['Date','Business','Items','Loaves','Total','Paid','Due','Added by'],...S.deliveries.slice().reverse().map(x=>[x.date,clientName(x.cid),x.items.map(i=>`${i.n} x${i.q} @${i.p}`).join('; '),loavesOf(x),x.total,paidOf(x),dueOf(x),x.bn])].map(r=>r.map(csvq).join(',')).join('\r\n'));
+  else if(k==='payments')download(`payments-${d}.csv`,'\uFEFF'+[['Date received','Business','Amount','Delivery date','Recorded by'],...S.deliveries.flatMap(x=>(x.pays||[]).map(p=>[p.t.slice(0,10),clientName(x.cid),p.a,x.date,p.bn]))].map(r=>r.map(csvq).join(',')).join('\r\n'));
+  else if(k==='expenses')download(`expenses-${d}.csv`,'\uFEFF'+[['Date','Category','Amount','Note','Added by'],...S.expenses.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(e=>[e.date,catInfo(e.cat).n,e.amt,e.note,e.bn])].map(r=>r.map(csvq).join(',')).join('\r\n'));
+  else download(`bread-route-backup-${d}.json`,JSON.stringify({exportedAt:new Date().toISOString(),clients:S.clients,products:S.products,deliveries:S.deliveries,expenses:S.expenses,monthly:S.monthly,cashdays:S.cashdays,settings:S.settings},null,1),'application/json');
+};
+acts.emailbk=async el=>{el.disabled=true;try{const r=await api('backup','POST',{});toast('📧 '+L('Backup sent to ','Копијата е пратена на ')+r.to)}catch(e){toast(errText(e))}el.disabled=false};
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__bip=e;const b=$('#inst');if(b)b.style.display='block'});
+acts.install=async()=>{const e=window.__bip;if(!e)return;e.prompt();try{await e.userChoice}catch(_){}window.__bip=null;const b=$('#inst');if(b)b.style.display='none'};
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 
 boot();
 </script>

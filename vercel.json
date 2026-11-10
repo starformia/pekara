@@ -1,1 +1,10 @@
-{ "framework": null, "outputDirectory": "public" }
+{
+  "framework": null,
+  "outputDirectory": "public",
+  "crons": [
+    {
+      "path": "/api/backup",
+      "schedule": "0 5 * * 1"
+    }
+  ]
+}

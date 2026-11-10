@@ -26,3 +26,14 @@ each of the other workers. Share the site link; each person signs in with their 
 - Passwords are bcrypt-hashed; sessions are signed HttpOnly cookies; 5 wrong passwords locks that user for 10 minutes.
 - Data refreshes every ~8 seconds on every phone.
 - Netlify: this project uses Vercel's `/api` function format; moving to Netlify means converting 5 small files.
+
+## v4 additions
+
+- **Money tab**: Expenses, Recipes (cost per loaf per product), Trends (6/12 months), Cash (daily payments received + till count).
+- **Install as app**: iPhone Safari → Share → Add to Home Screen; Android Chrome → ⋮ → Install app.
+- **Backup by email** (default `markokjanzo98@gmail.com`, changeable in Team tab). Add these in Vercel → Settings → Environment Variables, then Redeploy:
+  - `SMTP_USER` – the Gmail address that sends the mail
+  - `SMTP_PASS` – a Gmail **App Password** (Google Account → Security → 2-Step Verification → App passwords)
+  - `CRON_SECRET` – any long random string (lets the weekly Monday backup run)
+  - optional: `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `BACKUP_TO`
+- Note: sending real email could not be tested from the build sandbox (only the message building was).

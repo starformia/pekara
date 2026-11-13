@@ -697,7 +697,7 @@ const ING=['flour','yeast','sugar','salt','oil'];
 function overhead(){const m=today().slice(0,7),ex=S.expenses.filter(e=>e.date.startsWith(m)),ds=S.deliveries.filter(d=>d.date.startsWith(m));
   const mo=S.monthly.find(x=>x.id===m),sold=sumBy(ds,loavesOf),made=mo&&mo.produced>0?mo.produced:sold,tot=sumBy(ex.filter(e=>!ING.includes(e.cat)),e=>e.amt);
   return {per:made?tot/made:0,total:tot,made}}
-const recipeCost=p=>{const r=p.recipe;if(!r||!r.items||!r.items.length)return null;const batch=sumBy(r.items,i=>i.q*i.p);return {batch,per:batch/(r.yield||1)}};
+const recipeCost=p=>{const r=p.recipe;if(!r||!r.items||!r.items.length)return null;const batch=sumBy(r.items,i=>i.p);return {batch,per:batch/(r.yield||1)}};
 const fix2=n=>(Math.round(n*100)/100).toFixed(2);
 function recipesView(){
   const oh=overhead();
@@ -710,13 +710,22 @@ function recipesView(){
 }
 const UNITS=['kg','g','l','ml','pcs'];
 const QUICK=[['Flour','Брашно','kg'],['Yeast','Квасец','g'],['Salt','Сол','kg'],['Sugar','Шеќер','kg'],['Oil','Масло','l'],['Water','Вода','l'],['Milk','Млеко','l'],['Eggs','Јајца','pcs']];
-const rrowHtml=(i={})=>`<div class="prow rrow"><div class="row"><input class="rn" placeholder="${L('Ingredient','Состојка')}" value="${esc(i.n||'')}" oninput="rcalc()"><button class="btn dangerghost sm" style="flex:none" data-act="rcdel" aria-label="remove">✕</button></div>
-  <div class="row" style="margin-top:6px"><input class="rq" type="number" inputmode="decimal" placeholder="${L('Amount','Количина')}" value="${i.q||''}" oninput="rcalc()"><select class="ru" style="width:84px;flex:none" onchange="rcalc()">${UNITS.map(u=>`<option ${u===(i.u||'kg')?'selected':''}>${u}</option>`).join('')}</select><input class="rp" type="number" inputmode="decimal" placeholder="${L('Price / unit','Цена / ед.')}" value="${i.p||''}" oninput="rcalc()"></div><div class="small mut rsub" style="margin-top:4px;text-align:right"></div></div>`;
+const UF={kg:['m',1000],g:['m',1],l:['v',1000],ml:['v',1],pcs:['c',1]};
+const unitSel=(cls,u)=>`<select class="${cls}" style="width:76px;flex:none" onchange="rcalc()">${UNITS.map(x=>`<option ${x===u?'selected':''}>${x}</option>`).join('')}</select>`;
+const rrowHtml=(i={})=>{const direct=i.m==='d',bq=i.bq!==undefined?i.bq:(i.q||''),bu=i.bu||i.u||'kg',bp=i.bp!==undefined?i.bp:(i.p||'');
+  return `<div class="prow rrow" data-m="${direct?'d':'b'}"><div class="row"><input class="rn" placeholder="${L('Ingredient','Состојка')}" value="${esc(i.n||'')}" oninput="rcalc()"><button class="btn dangerghost sm" style="flex:none" data-act="rcdel" aria-label="remove">✕</button></div>
+  <div class="seg" style="margin:8px 0"><button type="button" class="${direct?'':'on'}" data-act="rcmode" data-m="b">🛒 ${L('Calculate it','Пресметај')}</button><button type="button" class="${direct?'on':''}" data-act="rcmode" data-m="d">✍ ${L('I know the cost','Знам цена')}</button></div>
+  <div class="mb" style="display:${direct?'none':'block'}"><div class="small mut" style="margin:0 0 3px">🛒 ${L('What I bought (amount and total price)','Што купив (количина и вкупна цена)')}</div>
+  <div class="row"><input class="bq" type="number" inputmode="decimal" placeholder="25" value="${bq}" oninput="rcalc()">${unitSel('bu',bu)}<input class="bp" type="number" inputmode="decimal" placeholder="${L('Price (MKD)','Цена (ден.)')}" value="${bp}" oninput="rcalc()"></div>
+  <div class="small mut" style="margin:8px 0 3px">🥣 ${L('Used in this batch','Искористено во шаржата')}</div>
+  <div class="row"><input class="rq" type="number" inputmode="decimal" placeholder="20" value="${direct?'':(i.q||'')}" oninput="rcalc()">${unitSel('ru',i.u||bu)}<span class="sp" style="text-align:right"><b class="rsub"></b></span></div></div>
+  <div class="md" style="display:${direct?'block':'none'}"><div class="small mut" style="margin:0 0 3px">✍ ${L('Cost of this ingredient for the whole batch (MKD)','Цена на оваа состојка за целата шаржа (ден.)')}</div>
+  <input class="dp" type="number" inputmode="decimal" placeholder="e.g. 4000" value="${direct?(i.p||''):''}" oninput="rcalc()"><div class="small mut rsubd" style="margin-top:4px"></div></div></div>`};
 let RC=null;
 function openRecipe(id){
   const p=S.products.find(x=>x.id===id);if(!p)return;const r=p.recipe||{yield:'',items:[]};RC={id};
   openSheet({tall:true,title:p.e+' '+p.n,
-  body:`<div class="small mut" style="margin:6px 0">${L('One batch = everything you mix and bake at once. Price per unit is what you pay for 1 kg / 1 l / 1 piece.','Една шаржа = сè што месиш и печеш одеднаш. Цена по единица е колку плаќаш за 1 кг / 1 л / 1 парче.')}</div>
+  body:`<div class="small mut" style="margin:6px 0">${L('One batch = everything you mix and bake at once. For each ingredient enter what you bought and its total price (e.g. 25 kg for 5,000), then how much goes in this batch (e.g. 20 kg). The app works out the cost.','Една шаржа = сè што месиш и печеш одеднаш. За секоја состојка внеси што си купил и вкупната цена (пр. 25 kg за 5.000), па колку оди во шаржата (пр. 20 kg). Апликацијата го пресметува трошокот.')}</div>
   <label class="f">${L('This batch makes (loaves)','Оваа шаржа дава (леба)')}</label><input id="rc-y" type="number" inputmode="numeric" placeholder="e.g. 20" value="${r.yield||''}" oninput="rcalc()">
   <label class="f">${L('Ingredients','Состојки')}</label><div id="rc-rows">${(r.items||[]).map(rrowHtml).join('')}</div>
   <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">${QUICK.map(q=>`<button type="button" class="btn ghost sm" data-act="rcadd" data-n="${L(q[0],q[1])}" data-u="${q[2]}">＋ ${L(q[0],q[1])}</button>`).join('')}<button type="button" class="btn ghost sm" data-act="rcadd">＋ ${L('Other','Друго')}</button></div>
@@ -725,11 +734,13 @@ function openRecipe(id){
   footer:`<button class="btn full" data-act="rcsave">${L('Save recipe','Зачувај рецепт')}</button>`});
   rcalc();
 }
-function rcRead(){const items=[...document.querySelectorAll('#rc-rows .rrow')].map(r=>({n:r.querySelector('.rn').value.trim(),q:+r.querySelector('.rq').value||0,u:r.querySelector('.ru').value,p:+r.querySelector('.rp').value||0}));return {yield:Math.round(+val('#rc-y')||0),items}}
+function rowCost(bq,bu,bp,q,u){const A=UF[bu],B=UF[u];if(!bq||!bp||!q)return 0;if(!A||!B||A[0]!==B[0])return NaN;return bp*(q*B[1])/(bq*A[1])}
+function rcRead(){const items=[...document.querySelectorAll('#rc-rows .rrow')].map(r=>{const m=r.dataset.m;if(m==='d')return {n:r.querySelector('.rn').value.trim(),m:'d',p:+r.querySelector('.dp').value||0,q:0,u:'',bq:0,bu:'',bp:0,bad:false};
+  const o={n:r.querySelector('.rn').value.trim(),m:'b',bq:+r.querySelector('.bq').value||0,bu:r.querySelector('.bu').value,bp:+r.querySelector('.bp').value||0,q:+r.querySelector('.rq').value||0,u:r.querySelector('.ru').value};const c=rowCost(o.bq,o.bu,o.bp,o.q,o.u);o.bad=isNaN(c);o.p=o.bad?0:Math.round(c*100)/100;return o});return {yield:Math.round(+val('#rc-y')||0),items}}
 function rcalc(){
   const p=S.products.find(x=>x.id===RC.id),r=rcRead(),oh=overhead();
-  document.querySelectorAll('#rc-rows .rrow').forEach((row,i)=>{const t=r.items[i].q*r.items[i].p;row.querySelector('.rsub').textContent=t?'= '+money(t):''});
-  const batch=sumBy(r.items,i=>i.q*i.p),per=r.yield?batch/r.yield:0,full=per+oh.per,profit=p.price-full,tgt=+(ls('bk_target')||30);
+  document.querySelectorAll('#rc-rows .rrow').forEach((row,i)=>{const it=r.items[i];if(it.m==='d')return;row.querySelector('.rsub').innerHTML=it.bad?'<span style="color:var(--bad)">'+L('units don’t match','мерките не се совпаѓаат')+'</span>':(it.p?'= '+money(it.p):'')});
+  const batch=sumBy(r.items,i=>i.p),per=r.yield?batch/r.yield:0,full=per+oh.per,profit=p.price-full,tgt=+(ls('bk_target')||30);
   $('#rc-sum').innerHTML=`<div class="statline"><span class="mut">${L('Cost of the whole batch','Цена на целата шаржа')}</span><b>${money(batch)}</b></div>
   <div class="statline"><span class="mut">${L('Ingredients per loaf','Состојки по леб')}</span><b>${r.yield?fix2(per):'—'}</b></div>
   <div class="statline"><span class="mut">${L('Overhead per loaf (from Expenses)','Режија по леб (од Трошоци)')}</span><b>${fix2(oh.per)}</b></div>
@@ -740,9 +751,10 @@ function rcalc(){
   <div class="statline"><span><b>${L('Suggested price','Предложена цена')}</b></span><b class="serif" style="font-size:22px">${r.yield&&tgt<100?fix2(full/(1-tgt/100)):'—'}</b></div>`;
 }
 acts.recipe=el=>openRecipe(el.dataset.id);
-acts.rcadd=el=>{const d=document.createElement('div');d.innerHTML=rrowHtml({n:el.dataset.n||'',u:el.dataset.u||'kg'});$('#rc-rows').appendChild(d.firstElementChild);rcalc();if(!el.dataset.n){const rows=document.querySelectorAll('#rc-rows .rn');rows[rows.length-1].focus()}};
+acts.rcadd=el=>{const d=document.createElement('div');d.innerHTML=rrowHtml({n:el.dataset.n||'',u:el.dataset.u||'kg',bq:'',bp:'',m:'b'});$('#rc-rows').appendChild(d.firstElementChild);rcalc();if(!el.dataset.n){const rows=document.querySelectorAll('#rc-rows .rn');rows[rows.length-1].focus()}};
+acts.rcmode=el=>{const r=el.closest('.rrow');r.dataset.m=el.dataset.m;r.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on',b===el));r.querySelector('.mb').style.display=el.dataset.m==='b'?'block':'none';r.querySelector('.md').style.display=el.dataset.m==='d'?'block':'none';rcalc()};
 acts.rcdel=el=>{el.closest('.rrow').remove();rcalc()};
-acts.rcsave=async()=>{const p=S.products.find(x=>x.id===RC.id),r=rcRead();r.items=r.items.filter(i=>i.n||i.q||i.p);if(!r.yield){toast(L('Enter how many loaves the batch makes','Внеси колку леба дава шаржата'));return}
+acts.rcsave=async()=>{const p=S.products.find(x=>x.id===RC.id),r=rcRead();r.items=r.items.filter(i=>i.n||i.q||i.p||i.bp);if(!r.yield){toast(L('Enter how many loaves the batch makes','Внеси колку леба дава шаржата'));return}
   if(await w(()=>api('write','POST',{op:'set',coll:'products',id:p.id,data:{n:p.n,e:p.e,price:p.price,recipe:r}}))){closeSheet();toast('✓ '+L('Recipe saved','Рецептот е зачуван'))}};
 acts.rcclear=()=>{const p=S.products.find(x=>x.id===RC.id);confirmBox({title:L('Remove this recipe?','Да се отстрани рецептот?'),msg:p.n,ok:L('Remove','Отстрани'),
   onOk:async()=>{if(await w(()=>api('write','POST',{op:'set',coll:'products',id:p.id,data:{n:p.n,e:p.e,price:p.price,recipe:null}})))closeSheet()}})};

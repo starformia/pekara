@@ -54,7 +54,8 @@ export default async function handler(req, res) {
         const recipe = rc === undefined ? old?.recipe : rc === null ? null : {
           yield: Math.max(1, Math.round(num(rc.yield)) || 1),
           items: (Array.isArray(rc.items) ? rc.items : []).slice(0, 40).map((i) => ({
-            n: str(i.n, 40), q: Math.max(0, num(i.q)), u: str(i.u, 8), p: Math.max(0, num(i.p)) }))
+            n: str(i.n, 40), q: Math.max(0, num(i.q)), u: str(i.u, 8), p: Math.max(0, num(i.p)),
+            m: i.m === 'd' ? 'd' : 'b', bq: Math.max(0, num(i.bq)), bu: str(i.bu, 8), bp: Math.max(0, num(i.bp)) }))
             .filter((i) => i.n || i.q || i.p) };
         await putDoc('products', key, {
           n: str(b.data?.n, 40) || 'Bread', e: str(b.data?.e, 8) || '🍞',

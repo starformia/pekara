@@ -19,14 +19,14 @@ export async function buildBackup() {
       d.items.reduce((a, i) => a + i.q, 0), d.total, paidOf(d), Math.max(0, d.total - paidOf(d)), d.bn])]);
   const payments = csv([['Date received', 'Business', 'Amount', 'Delivery date', 'Recorded by'],
     ...ds.flatMap((d) => (d.pays || []).map((p) => [p.t.slice(0, 10), name(d.cid), p.a, d.date, p.bn]))]);
-  const expenses = csv([['Date', 'Category', 'Amount', 'Note', 'Added by'],
-    ...by.expenses.sort((a, b) => a.date.localeCompare(b.date)).map((e) => [e.date, e.cat, e.amt, e.note, e.bn])]);
+  const expenses = csv([['Date', 'Category', 'Amount', 'Spread over months', 'Note', 'Added by'],
+    ...by.expenses.sort((a, b) => a.date.localeCompare(b.date)).map((e) => [e.date, e.cat, e.amt, e.months || 1, e.note, e.bn])]);
   const cash = csv([['Day', 'Expected', 'Counted', 'Difference', 'Note', 'By'],
     ...by.cashdays.sort((a, b) => a.id.localeCompare(b.id)).map((c) => [c.id, c.expected, c.counted, c.counted - c.expected, c.note, c.bn])]);
   const owed = ds.reduce((a, d) => a + Math.max(0, d.total - paidOf(d)), 0);
   const month = new Date().toISOString().slice(0, 7);
   const mSales = ds.filter((d) => d.date.startsWith(month)).reduce((a, d) => a + d.total, 0);
-  const mExp = by.expenses.filter((e) => e.date.startsWith(month)).reduce((a, e) => a + e.amt, 0);
+  const mExp = by.expenses.filter((e) => e.date.startsWith(month)).reduce((a, e) => a + e.amt / (e.months || 1), 0);
   return {
     summary: { businesses: by.clients.length, deliveries: ds.length, owed, month, mSales, mExp },
     files: [

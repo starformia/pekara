@@ -64,12 +64,15 @@ export default async function handler(req, res) {
       }
       if (coll === 'expenses') {
         if (!admin) return send(res, 403, { error: 'admin_only' });
-        const amt = Math.max(0, num(b.data?.amt));
+        const cd = b.data?.calc;
+        const calc = cd && num(cd.a) > 0 && num(cd.c) > 0 ? { a: num(cd.a), b: num(cd.b) > 0 ? num(cd.b) : 1, c: num(cd.c) } : null;
+        const amt = calc ? Math.round(calc.a * calc.b * calc.c * 100) / 100 : Math.max(0, num(b.data?.amt));
         if (!(amt > 0)) return send(res, 400, { error: 'bad_amount' });
+        const months = Math.min(60, Math.max(1, Math.round(num(b.data?.months)) || 1));
         const key = id || uid();
         const old = await getDoc('expenses', key);
         const date = /^\d{4}-\d{2}-\d{2}$/.test(b.data?.date || '') ? b.data.date : now.slice(0, 10);
-        await putDoc('expenses', key, { cat: str(b.data?.cat, 40) || 'other', amt, date, note: str(b.data?.note, 200),
+        await putDoc('expenses', key, { cat: str(b.data?.cat, 40) || 'other', amt, date, note: str(b.data?.note, 200), months, ...(calc ? { calc } : {}),
           by: old?.by || me.id, bn: old?.bn || me.name, at: old?.at || now });
         return send(res, 200, { id: key });
       }

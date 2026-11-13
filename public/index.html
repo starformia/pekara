@@ -634,49 +634,83 @@ const CATS=[['flour','🌾','Flour','Брашно'],['yeast','🧫','Yeast','К�
 const catInfo=k=>{const c=CATS.find(x=>x[0]===k);return c?{e:c[1],n:L(c[2],c[3])}:{e:'🧾',n:k}};
 const monthLabel=m=>new Date(+m.slice(0,4),+m.slice(5,7)-1,15).toLocaleDateString(loc(),{month:'long',year:'numeric'});
 const shiftMonth=(m,d)=>{const t=new Date(+m.slice(0,4),+m.slice(5,7)-1+d,15);return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')};
-function expensesView(){
-  const m=S.xm,ex=S.expenses.filter(e=>e.date.startsWith(m)).sort((a,b)=>b.date.localeCompare(a.date)||b.at.localeCompare(a.at));
-  const tot=ex.reduce((a,e)=>a+e.amt,0),ds=S.deliveries.filter(d=>d.date.startsWith(m));
-  const sales=ds.reduce((a,d)=>a+d.total,0),sold=ds.reduce((a,d)=>a+loavesOf(d),0);
+const mdiff=(a,b)=>(+b.slice(0,4)-+a.slice(0,4))*12+(+b.slice(5,7)-+a.slice(5,7));
+const expMonth=(e,m)=>{const n=e.months>1?e.months:1,k=mdiff(e.date.slice(0,7),m);return k>=0&&k<n?e.amt/n:0};
+const expsOf=m=>S.expenses.map(e=>({e,v:expMonth(e,m)})).filter(x=>x.v>0);
+function costModel(m){
+  const ds=S.deliveries.filter(d=>d.date.startsWith(m)),sales=sumBy(ds,d=>d.total),sold=sumBy(ds,loavesOf);
   const mo=S.monthly.find(x=>x.id===m),made=mo&&mo.produced>0?mo.produced:sold;
-  const cpl=made?tot/made:0,avgP=sold?sales/sold:0,ppl=avgP-cpl,profit=sales-tot;
-  const by={};for(const e of ex)by[e.cat]=(by[e.cat]||0)+e.amt;
-  const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]);
-  const isCur=m===today().slice(0,7);
-  return `<div class="row" style="margin:12px 0"><button class="btn ghost sm" style="flex:none" onclick="S.xm=shiftMonth(S.xm,-1);render()">‹</button><h2 class="sp" style="text-align:center;font-size:20px;text-transform:capitalize">${monthLabel(m)}</h2><button class="btn ghost sm" style="flex:none" ${isCur?'disabled':''} onclick="S.xm=shiftMonth(S.xm,1);render()">›</button></div>
-  <div class="card" style="background:linear-gradient(135deg,#fff3d6,#fffaf1)"><div class="small mut">${L('Cost to make one loaf','Цена за правење на еден леб')}</div>
-  <div class="serif" style="font-size:38px;color:var(--crust2)">${made?cpl.toFixed(2)+(lang==='mk'?' ден.':' MKD'):'—'}</div>
-  <div class="small mut">${money(tot)} ${L('total expenses','вкупно трошоци')} ÷ ${made} 🍞</div></div>
-  <div class="grid2"><div class="kpi"><span class="small mut">${L('Average selling price','Просечна продажна цена')}</span><b>${sold?avgP.toFixed(2):'—'}</b><span class="small mut">${L('per loaf','по леб')}</span></div>
-  <div class="kpi ${ppl>=0?'ok':'bad'}"><span class="small mut">${L('Profit per loaf','Профит по леб')}</span><b>${made&&sold?(ppl>=0?'+':'')+ppl.toFixed(2):'—'}</b><span class="small mut">${made&&sold&&avgP?Math.round(ppl/avgP*100)+'% '+L('margin','маргина'):''}</span></div>
-  <div class="kpi"><span class="small mut">${L('Sales this month','Продажба овој месец')}</span><b>${money(sales)}</b><span class="small mut">${sold} 🍞 ${L('delivered','доставени')}</span></div>
-  <div class="kpi ${profit>=0?'ok':'bad'}"><span class="small mut">${L('Total profit','Вкупен профит')}</span><b>${money(profit)}</b></div></div>
-  <div class="card"><div class="small mut" style="margin-bottom:4px">${L('Loaves made this month (optional — if empty, delivered loaves are used)','Испечени леба овој месец (опционално — ако е празно, се користат доставените)')}</div>
-  <input type="number" inputmode="numeric" placeholder="${sold}" value="${mo&&mo.produced>0?mo.produced:''}" onchange="w(()=>api('write','POST',{op:'set',coll:'monthly',id:S.xm,data:{produced:this.value}}))"></div>
-  ${rows.length?`<div class="card"><h3>${L('Where the money goes','Каде одат парите')}</h3>${rows.map(([k,v])=>{const ci=catInfo(k);return `<div style="margin:10px 0"><div class="row"><span class="sp">${ci.e} ${esc(ci.n)}</span><b>${money(v)}</b></div><div class="meter" style="background:#f3e6c9;margin:4px 0"><i style="width:${Math.round(v/tot*100)}%;background:var(--gold)"></i></div><div class="small mut">${Math.round(v/tot*100)}%${made?` · ${(v/made).toFixed(2)} ${L('per loaf','по леб')}`:''}</div></div>`}).join('')}</div>`:''}
-  <div class="card"><div class="row"><h3 class="sp" style="margin:0">🧾 ${L('Entries','Внесови')}</h3><button class="btn sm" data-act="newexp">＋ ${L('Add','Додади')}</button></div>
-  ${ex.length?`<div class="list" style="margin-top:6px">${ex.map(e=>{const ci=catInfo(e.cat);return `<div class="it" data-act="editexp" data-id="${e.id}"><span style="font-size:22px">${ci.e}</span><div class="sp"><b>${esc(ci.n)}</b><div class="small mut">${fmtD(e.date)}${e.note?' · '+esc(e.note):''}</div></div><b>${money(e.amt)}</b></div>`}).join('')}</div>`:`<div class="empty"><b>🧮</b>${L('No expenses for this month yet. Add flour, electricity, sugar, water…','Нема трошоци за овој месец. Додади брашно, струја, шеќер, вода…')}</div>`}</div>`;
+  const ex=expsOf(m),by={};for(const x of ex)by[x.e.cat]=(by[x.e.cat]||0)+x.v;
+  const oh=Object.entries(by).filter(([k])=>!ING.includes(k)),ohTotal=sumBy(oh,x=>x[1]),receipts=sumBy(Object.entries(by).filter(([k])=>ING.includes(k)),x=>x[1]);
+  const sp={};for(const d of ds)for(const i of d.items||[])sp[i.pid]=(sp[i.pid]||0)+i.q;
+  let rc=0,rl=0;for(const p of S.products){const c=recipeCost(p),q=sp[p.id]||0;if(c&&q){rc+=c.per*q;rl+=q}}
+  const useRec=rl>0,ingPer=useRec?rc/rl:(made?receipts/made:0),ingTotal=useRec?ingPer*made:receipts;
+  const ohPer=made?ohTotal/made:0,totalCost=ingTotal+ohTotal;
+  return {ds,sales,sold,made,mo,by,oh:oh.sort((a,b)=>b[1]-a[1]),ohTotal,receipts,useRec,ingPer,ingTotal,ohPer,real:ingPer+ohPer,totalCost,profit:sales-totalCost,covered:rl,count:ex.length};
 }
-let XC='flour';
+function expensesView(){
+  const m=S.xm,M=costModel(m),isCur=m===today().slice(0,7),cur=lang==='mk'?' ден.':' MKD';
+  const avgP=M.sold?M.sales/M.sold:0,ppl=avgP-M.real,ex=expsOf(m).sort((a,b)=>b.e.date.localeCompare(a.e.date)||b.e.at.localeCompare(a.e.at));
+  const parts=[];if(M.made){if(M.ingPer>0)parts.push({k:'ing',e:'🍞',n:L('Ingredients','Состојки')+(M.useRec?' ('+L('from recipes','од рецепти')+')':''),per:M.ingPer});for(const [k,v] of M.oh)parts.push({k,e:catInfo(k).e,n:catInfo(k).n,per:v/M.made,tot:v})}
+  const realPer=M.real||1;
+  const recs=S.products.map(p=>({p,c:recipeCost(p)})).filter(x=>x.c);
+  return `<div class="row" style="margin:12px 0"><button class="btn ghost sm" style="flex:none" onclick="S.xm=shiftMonth(S.xm,-1);render()">‹</button><h2 class="sp" style="text-align:center;font-size:20px;text-transform:capitalize">${monthLabel(m)}</h2><button class="btn ghost sm" style="flex:none" ${isCur?'disabled':''} onclick="S.xm=shiftMonth(S.xm,1);render()">›</button></div>
+  <div class="card" style="background:linear-gradient(135deg,#fff3d6,#fffaf1)"><div class="small mut">${L('Real cost of one loaf','Вистинска цена на еден леб')}</div>
+  <div class="serif" style="font-size:40px;color:var(--crust2)">${M.made&&M.real?M.real.toFixed(2)+cur:'—'}</div>
+  <div class="small mut">${M.made?`${L('ingredients','состојки')} ${M.ingPer.toFixed(2)} + ${L('everything else','сè останато')} ${M.ohPer.toFixed(2)} · ${M.made} 🍞`:L('Enter expenses and deliver some bread to see this','Внеси трошоци и достави леб за да се прикаже')}</div></div>
+  ${M.made&&!M.useRec&&!M.receipts?`<div class="card" style="border-color:var(--gold)"><div class="small">💡 ${L('Ingredients are not counted yet. Set up recipes in the Recipes tab (or add flour, yeast… as expenses) to get the full price of a loaf.','Состојките уште не се сметаат. Подеси рецепти во табот Рецепти (или додади брашно, квасец… како трошоци) за целосна цена на лебот.')}</div></div>`:''}
+  <div class="grid2"><div class="kpi"><span class="small mut">${L('Average selling price','Просечна продажна цена')}</span><b>${M.sold?avgP.toFixed(2):'—'}</b><span class="small mut">${L('per loaf','по леб')}</span></div>
+  <div class="kpi ${ppl>=0?'ok':'bad'}"><span class="small mut">${L('Profit per loaf','Профит по леб')}</span><b>${M.made&&M.sold?(ppl>=0?'+':'')+ppl.toFixed(2):'—'}</b><span class="small mut">${M.made&&M.sold&&avgP?Math.round(ppl/avgP*100)+'% '+L('margin','маргина'):''}</span></div>
+  <div class="kpi"><span class="small mut">${L('Sales this month','Продажба овој месец')}</span><b>${money(M.sales)}</b><span class="small mut">${M.sold} 🍞 ${L('delivered','доставени')}</span></div>
+  <div class="kpi ${M.profit>=0?'ok':'bad'}"><span class="small mut">${L('Total profit','Вкупен профит')}</span><b>${money(M.profit)}</b><span class="small mut">${L('cost','трошок')} ${money(M.totalCost)}</span></div></div>
+  <div class="card"><div class="small mut" style="margin-bottom:4px">${L('Loaves made this month (optional — if empty, delivered loaves are used)','Испечени леба овој месец (опционално — ако е празно, се користат доставените)')}</div>
+  <input type="number" inputmode="numeric" placeholder="${M.sold}" value="${M.mo&&M.mo.produced>0?M.mo.produced:''}" onchange="w(()=>api('write','POST',{op:'set',coll:'monthly',id:S.xm,data:{produced:this.value}}))"></div>
+  ${parts.length?`<div class="card"><h3>🧮 ${L('What one loaf costs, piece by piece','Од што се состои цената на еден леб')}</h3>${parts.map(x=>`<div style="margin:10px 0"><div class="row"><span class="sp">${x.e} ${esc(x.n)}</span><b>${x.per.toFixed(2)}</b></div><div class="meter" style="background:#f3e6c9;margin:4px 0"><i style="width:${Math.round(x.per/realPer*100)}%;background:${x.k==='ing'?'var(--crust)':'var(--gold)'}"></i></div><div class="small mut">${Math.round(x.per/realPer*100)}%${x.tot?` · ${money(x.tot)} ${L('this month','овој месец')}`:''}</div></div>`).join('')}
+  <div class="statline" style="border-top:2px solid var(--line,#e8d9b8);margin-top:8px;padding-top:8px"><span><b>${L('Real cost per loaf','Вистинска цена по леб')}</b></span><b class="serif" style="font-size:22px">${M.real.toFixed(2)}</b></div>
+  ${M.useRec&&M.receipts>0?`<div class="small mut" style="margin-top:6px">ℹ️ ${L('Ingredient purchases logged below ('+money(M.receipts)+') are not added again — recipes are used for ingredients.','Внесените набавки на состојки ('+money(M.receipts)+') не се собираат повторно — за состојките се користат рецептите.')}</div>`:''}
+  ${M.useRec&&M.covered<M.sold?`<div class="small mut" style="margin-top:6px">ℹ️ ${L((M.sold-M.covered)+' delivered loaves have no recipe yet; their ingredients are estimated at the average.',(M.sold-M.covered)+' доставени леба немаат рецепт; состојките им се проценети по просек.')}</div>`:''}</div>`:''}
+  ${recs.length&&M.made?`<div class="card"><h3>🥖 ${L('Real cost by product','Вистинска цена по производ')}</h3>${recs.map(({p,c})=>{const full=c.per+M.ohPer,pr=p.price-full;return `<div class="statline" data-act="recipe" data-id="${p.id}" style="cursor:pointer"><span>${esc(p.e)} ${esc(p.n)}<div class="small mut">${L('sells','се продава')} ${money(p.price)}</div></span><span style="text-align:right"><b>${full.toFixed(2)}</b><div class="small" style="color:${pr>=0?'var(--ok)':'var(--bad)'}">${pr>=0?'+':''}${pr.toFixed(2)}</div></span></div>`}).join('')}</div>`:''}
+  <div class="card"><div class="row"><h3 class="sp" style="margin:0">🧾 ${L('Entries','Внесови')}</h3><button class="btn sm" data-act="newexp">＋ ${L('Add','Додади')}</button></div>
+  ${ex.length?`<div class="list" style="margin-top:6px">${ex.map(({e,v})=>{const ci=catInfo(e.cat),sp=e.months>1;return `<div class="it" data-act="editexp" data-id="${e.id}"><span style="font-size:22px">${ci.e}</span><div class="sp"><b>${esc(ci.n)}</b><div class="small mut">${fmtD(e.date)}${sp?' · '+L('spread over '+e.months+' months',e.months+' месеци поделено'):''}${e.calc?' · 🧮':''}${e.note?' · '+esc(e.note):''}</div></div><span style="text-align:right"><b>${money(v)}</b>${sp?`<div class="small mut">${L('of','од')} ${money(e.amt)}</div>`:''}</span></div>`}).join('')}</div>`:`<div class="empty"><b>🧮</b>${L('No expenses for this month yet. Add electricity, fuel, wages, rent…','Нема трошоци за овој месец. Додади струја, гориво, плати, кирија…')}</div>`}</div>`;
+}
+let XC='flour',XM='d';
+const XL={wages:[L('Workers','Работници'),L('Days','Денови'),L('Pay per day (MKD)','Плата на ден (ден.)')],transport:[L('Litres / km','Литри / км'),null,L('Price per litre / km','Цена по литар / км')],electricity:['kWh',null,L('Price per kWh','Цена по kWh')],water:['m³',null,L('Price per m³','Цена по m³')],gas:[L('Units (kg / m³)','Единици (кг / m³)'),null,L('Price per unit','Цена по единица')]};
+const xlab=()=>XL[XC]||[L('Quantity','Количина'),null,L('Price per unit (MKD)','Цена по единица (ден.)')];
+function xRender(){
+  const lb=xlab();$('#x-la').textContent=lb[0];$('#x-lb').textContent=lb[1]||'';$('#x-wb').style.display=lb[1]?'block':'none';$('#x-lc').textContent=lb[2];xcalc()}
+function xTotal(){if(XM==='d')return +val('#x-amt')||0;const a=+val('#x-ca')||0,b=xlab()[1]?(+val('#x-cb')||0):1,c=+val('#x-cc')||0;return a>0&&b>0&&c>0?Math.round(a*b*c*100)/100:0}
+function xcalc(){const t=xTotal(),n=+val('#x-mo')||1;$('#x-calcres').textContent=XM==='c'&&t?'= '+money(t):'';$('#x-share').textContent=n>1&&t?L('Each month counts ','Секој месец се брои ')+money(t/n)+' ('+money(t)+' ÷ '+n+')':''}
 function openExpense(id,keepCat){
   const e=S.expenses.find(x=>x.id===id)||{};
-  XC=e.cat||keepCat||'flour';const preset=CATS.some(c=>c[0]===XC);
-  openSheet({title:id?L('Edit expense','Измени трошок'):L('Add expense','Нов трошок'),
+  XC=e.cat||keepCat||'flour';XM=e.calc?'c':'d';const preset=CATS.some(c=>c[0]===XC),k=e.calc||{};
+  openSheet({tall:true,title:id?L('Edit expense','Измени трошок'):L('Add expense','Нов трошок'),
   body:`<label class="f">${L('What for?','За што?')}</label><div style="display:flex;flex-wrap:wrap;gap:8px" id="xc">${CATS.map(c=>`<button type="button" class="btn sm ${(preset?XC===c[0]:c[0]==='other')?'':'ghost'}" data-act="xcat" data-k="${c[0]}">${c[1]} ${L(c[2],c[3])}</button>`).join('')}</div>
   <div id="xcustom" style="display:${preset&&XC!=='other'?'none':'block'}"><label class="f">${L('Name (optional)','Име (опционално)')}</label><input id="x-name" value="${preset?'':esc(XC)}" placeholder="${L('e.g. Eggs, repair…','пр. Јајца, поправка…')}"></div>
-  <label class="f">${L('Amount','Износ')} (${lang==='mk'?'ден.':'MKD'})</label><input id="x-amt" type="number" inputmode="decimal" value="${e.amt||''}">
-  <label class="f">${L('Date','Датум')}</label><input id="x-date" type="date" value="${e.date||(S.xm===today().slice(0,7)?today():S.xm+'-01')}">
-  <label class="f">${L('Note (optional)','Белешка (опционално)')}</label><input id="x-note" value="${esc(e.note)}" placeholder="${L('e.g. 10 bags of 25kg','пр. 10 вреќи од 25кг')}">
+  <div class="seg" style="margin:14px 0 4px"><button type="button" id="xm-d" class="${XM==='d'?'on':''}" data-act="xmode" data-m="d">✍ ${L('I know the total','Знам вкупно')}</button><button type="button" id="xm-c" class="${XM==='c'?'on':''}" data-act="xmode" data-m="c">🧮 ${L('Calculate it','Пресметај')}</button></div>
+  <div id="x-wd" style="display:${XM==='d'?'block':'none'}"><label class="f">${L('Total amount','Вкупен износ')} (${lang==='mk'?'ден.':'MKD'})</label><input id="x-amt" type="number" inputmode="decimal" value="${e.calc?'':(e.amt||'')}" oninput="xcalc()"></div>
+  <div id="x-wc" style="display:${XM==='c'?'block':'none'}">
+   <label class="f" id="x-la"></label><input id="x-ca" type="number" inputmode="decimal" value="${k.a||''}" oninput="xcalc()">
+   <div id="x-wb"><label class="f" id="x-lb"></label><input id="x-cb" type="number" inputmode="decimal" value="${k.b>1?k.b:(k.b||'')}" oninput="xcalc()"></div>
+   <label class="f" id="x-lc"></label><input id="x-cc" type="number" inputmode="decimal" value="${k.c||''}" oninput="xcalc()">
+   <div class="serif" style="font-size:24px;margin-top:8px;text-align:right" id="x-calcres"></div></div>
+  <label class="f">📅 ${L('Covers how many months?','На колку месеци се однесува?')}</label>
+  <select id="x-mo" onchange="xcalc()">${[1,2,3,4,6,12,24].map(n=>`<option value="${n}" ${(e.months||1)===n?'selected':''}>${n===1?L('1 month (this one only)','1 месец (само овој)'):n+' '+L('months','месеци')}</option>`).join('')}</select>
+  <div class="small mut" style="margin-top:4px" id="x-share"></div>
+  <label class="f">${L('Date paid','Датум на плаќање')}</label><input id="x-date" type="date" value="${e.date||(S.xm===today().slice(0,7)?today():S.xm+'-01')}">
+  <label class="f">${L('Note (optional)','Белешка (опционално)')}</label><input id="x-note" value="${esc(e.note)}" placeholder="${L('e.g. October bill','пр. сметка за октомври')}">
   ${id?`<hr><button class="btn dangerghost full" data-act="delexp" data-id="${id}">🗑 ${L('Delete','Избриши')}</button>`:''}`,
   footer:`<div class="row"><button class="btn sp" data-act="savexp" data-id="${id||''}">${L('Save','Зачувај')}</button>${id?'':`<button class="btn ghost sp" data-act="savexp" data-id="" data-more="1">${L('Save & add another','Зачувај и додади уште')}</button>`}</div>`});
+  xRender();
 }
+acts.xmode=el=>{XM=el.dataset.m;$('#xm-d').classList.toggle('on',XM==='d');$('#xm-c').classList.toggle('on',XM==='c');$('#x-wd').style.display=XM==='d'?'block':'none';$('#x-wc').style.display=XM==='c'?'block':'none';xRender()};
 acts.newexp=()=>openExpense();
 acts.editexp=el=>openExpense(el.dataset.id);
-acts.xcat=el=>{XC=el.dataset.k;document.querySelectorAll('#xc button').forEach(b=>b.classList.toggle('ghost',b!==el));$('#xcustom').style.display=XC==='other'?'block':'none'};
+acts.xcat=el=>{XC=el.dataset.k;document.querySelectorAll('#xc button').forEach(b=>b.classList.toggle('ghost',b!==el));$('#xcustom').style.display=XC==='other'?'block':'none';xRender()};
 acts.savexp=async el=>{
-  const amt=+val('#x-amt')||0;if(amt<=0){toast(L('Enter an amount','Внеси износ'));return}
-  const cat=XC==='other'&&val('#x-name').trim()?val('#x-name').trim():XC,id=el.dataset.id||undefined,date=val('#x-date');
-  if(await w(()=>api('write','POST',{op:'set',coll:'expenses',id,data:{cat,amt,date,note:val('#x-note')}}))){
+  const amt=xTotal();if(amt<=0){toast(L('Enter an amount','Внеси износ'));return}
+  const cat=XC==='other'&&val('#x-name').trim()?val('#x-name').trim():XC,id=el.dataset.id||undefined,date=val('#x-date'),months=+val('#x-mo')||1;
+  const data={cat,date,months,note:val('#x-note')};if(XM==='c'){const lb=xlab();data.calc={a:+val('#x-ca'),b:lb[1]?+val('#x-cb'):1,c:+val('#x-cc')}}else data.amt=amt;
+  if(await w(()=>api('write','POST',{op:'set',coll:'expenses',id,data}))){
     if(date&&date.slice(0,7)!==S.xm)S.xm=date.slice(0,7);
     toast('✓ '+catInfo(cat).n+' · '+money(amt));if(el.dataset.more)openExpense(null,XC);else closeSheet();render()}
 };
@@ -694,9 +728,7 @@ const kfmt=n=>Math.abs(n)>=1000?(n/1000).toFixed(Math.abs(n)>=10000?0:1).replace
 
 /* ================= RECIPE COSTING ================= */
 const ING=['flour','yeast','sugar','salt','oil'];
-function overhead(){const m=today().slice(0,7),ex=S.expenses.filter(e=>e.date.startsWith(m)),ds=S.deliveries.filter(d=>d.date.startsWith(m));
-  const mo=S.monthly.find(x=>x.id===m),sold=sumBy(ds,loavesOf),made=mo&&mo.produced>0?mo.produced:sold,tot=sumBy(ex.filter(e=>!ING.includes(e.cat)),e=>e.amt);
-  return {per:made?tot/made:0,total:tot,made}}
+function overhead(){const m=today().slice(0,7),M=costModel(m);return {per:M.ohPer,total:M.ohTotal,made:M.made}}
 const recipeCost=p=>{const r=p.recipe;if(!r||!r.items||!r.items.length)return null;const batch=sumBy(r.items,i=>i.p);return {batch,per:batch/(r.yield||1)}};
 const fix2=n=>(Math.round(n*100)/100).toFixed(2);
 function recipesView(){
@@ -762,7 +794,7 @@ acts.rcclear=()=>{const p=S.products.find(x=>x.id===RC.id);confirmBox({title:L('
 /* ================= TRENDS ================= */
 function trendsView(){
   const N=S.tr,cur=today().slice(0,7),months=[...Array(N)].map((_,i)=>shiftMonth(cur,-(N-1-i)));
-  const data=months.map(m=>{const ds=S.deliveries.filter(d=>d.date.startsWith(m)),sales=sumBy(ds,d=>d.total),exp=sumBy(S.expenses.filter(e=>e.date.startsWith(m)),e=>e.amt),loaves=sumBy(ds,loavesOf);
+  const data=months.map(m=>{const ds=S.deliveries.filter(d=>d.date.startsWith(m)),sales=sumBy(ds,d=>d.total),exp=sumBy(expsOf(m),x=>x.v),loaves=sumBy(ds,loavesOf);
     let coll=0;for(const d of S.deliveries)for(const p of d.pays||[])if(ymd(new Date(p.t)).startsWith(m))coll+=p.a;
     return {m,sales,exp,profit:sales-exp,coll,loaves,cpl:loaves?exp/loaves:null}});
   const maxV=Math.max(1,...data.flatMap(d=>[d.sales,d.exp,d.profit])),minV=Math.min(0,...data.map(d=>d.profit)),top=18,bot=200,Y=v=>top+(maxV-v)/(maxV-minV)*(bot-top),gw=600/N,bw=Math.min(26,gw*.24);
@@ -840,7 +872,7 @@ const csvq=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
 acts.dl=el=>{const k=el.dataset.k,d=today();
   if(k==='deliveries')download(`deliveries-${d}.csv`,'\uFEFF'+[['Date','Business','Items','Loaves','Total','Paid','Due','Added by'],...S.deliveries.slice().reverse().map(x=>[x.date,clientName(x.cid),x.items.map(i=>`${i.n} x${i.q} @${i.p}`).join('; '),loavesOf(x),x.total,paidOf(x),dueOf(x),x.bn])].map(r=>r.map(csvq).join(',')).join('\r\n'));
   else if(k==='payments')download(`payments-${d}.csv`,'\uFEFF'+[['Date received','Business','Amount','Delivery date','Recorded by'],...S.deliveries.flatMap(x=>(x.pays||[]).map(p=>[p.t.slice(0,10),clientName(x.cid),p.a,x.date,p.bn]))].map(r=>r.map(csvq).join(',')).join('\r\n'));
-  else if(k==='expenses')download(`expenses-${d}.csv`,'\uFEFF'+[['Date','Category','Amount','Note','Added by'],...S.expenses.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(e=>[e.date,catInfo(e.cat).n,e.amt,e.note,e.bn])].map(r=>r.map(csvq).join(',')).join('\r\n'));
+  else if(k==='expenses')download(`expenses-${d}.csv`,'\uFEFF'+[['Date','Category','Amount','Spread over months','Note','Added by'],...S.expenses.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(e=>[e.date,catInfo(e.cat).n,e.amt,e.months||1,e.note,e.bn])].map(r=>r.map(csvq).join(',')).join('\r\n'));
   else download(`bread-route-backup-${d}.json`,JSON.stringify({exportedAt:new Date().toISOString(),clients:S.clients,products:S.products,deliveries:S.deliveries,expenses:S.expenses,monthly:S.monthly,cashdays:S.cashdays,settings:S.settings},null,1),'application/json');
 };
 acts.emailbk=async el=>{el.disabled=true;try{const r=await api('backup','POST',{});toast('📧 '+L('Backup sent to ','Копијата е пратена на ')+r.to)}catch(e){toast(errText(e))}el.disabled=false};
